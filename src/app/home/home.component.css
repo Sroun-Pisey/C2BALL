@@ -1,0 +1,8 @@
+.nav-item {
+    max-width: 130px;
+    height: auto;
+}
+.button-img:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}

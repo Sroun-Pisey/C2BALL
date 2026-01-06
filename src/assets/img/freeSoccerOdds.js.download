@@ -1,0 +1,1992 @@
+﻿var oXmlHttp = zXmlHttp.createRequest();
+var oddsHttp = zXmlHttp.createRequest();
+var oddsHttp_ch = zXmlHttp.createRequest();
+var sbOddsDetailHttp = zXmlHttp.createRequest();
+var sbOddsChangeHttp = zXmlHttp.createRequest();
+var state_ch = Array(19);
+state_ch[0] = _locModel.T.T_ST_Postp;
+state_ch[1] = _locModel.T.T_ST_Pause;
+state_ch[2] = _locModel.T.T_ST_Abd;
+state_ch[3] = "<font color=green>" + _locModel.T.T_ST_Pend + "</font>";
+state_ch[4] = _locModel.T.T_ST_Cancel;
+state_ch[13] = "<b>" + _locModel.T.T_ST_FT + "</b>";
+state_ch[14] = " ";
+state_ch[15] = _locModel.T.T_ST_Part1;
+state_ch[16] = _locModel.T.T_ST_HT;
+state_ch[17] = _locModel.T.T_ST_Part2;
+state_ch[18] = _locModel.T.T_ST_Ot;
+state_ch[19] = _locModel.T.T_ST_Pen;
+
+var state_Desc = Array(19);
+state_Desc[0] = _locModel.T.T_ST_Postponed;
+state_Desc[1] = _locModel.T.T_ST_Pause;
+state_Desc[2] = _locModel.T.T_ST_Abandoned;
+state_Desc[3] = "";
+state_Desc[4] = _locModel.T.T_ST_Cancel;
+state_Desc[13] = "";
+state_Desc[14] = "";
+state_Desc[15] = _locModel.T.T_ST_Part1;
+state_Desc[16] = "";
+state_Desc[17] = _locModel.T.T_ST_Part2;
+state_Desc[18] = _locModel.T.T_ST_Ot;
+state_Desc[19] = _locModel.T.T_ST_Pen;
+
+var difftime;
+function getDiffTime() {
+    if (_serverTime) {
+        var sps = _serverTime.split(",");
+        difftime = new Date() - new Date(sps[0], sps[1], sps[2], sps[3], sps[4], sps[5]);
+    }
+}
+getDiffTime();
+
+var hasInit = 0;
+function ShowBf() {
+    hiddenID = getCookie("Hidden_MatchID");
+    if (hiddenID == null) hiddenID = "_";
+    var oddsFile = "/gf/data/odds/en/goal" + companyID + ".xml?" + Date.parse(new Date());
+    if (isResult) oddsFile = "/gf/data/finish/goal" + companyID + ".xml?" + Date.parse(new Date());
+    oddsHttp.open("get", oddsFile, false);
+    oddsHttp.send(null);
+    if (orderby == "league") {
+        MakeTable();
+        //document.getElementById("li_league").style.display = "none";
+        //document.getElementById("li_time").style.display = "";
+        document.getElementById("OrderSel").value = "league";
+    }
+    else {
+        MakeTableByTime();
+        //document.getElementById("li_league").style.display = "";
+        //            document.getElementById("li_time").style.display = "none";
+        document.getElementById("OrderSel").value = "time";
+    }
+    MakeSclass();
+    InitIsShowOdds();
+    hideSelMatch();
+    showodds(oddsHttp);
+
+    window.clearTimeout(runtimeTimer);
+    runtimeTimer = window.setTimeout("setMatchTime()", 1000);
+
+    document.getElementById("sloading").style.display = "none";
+    //重新load数据时防止再次执行读取定时器
+    if (hasInit == 0) {
+        window.setTimeout("getoddsxml()", 3000);
+        window.setTimeout("getsbxml()", 3000);
+        hasInit = 1;
+    }
+    specialHide();
+    initSortLea();
+    document.getElementById("hiddencount").innerHTML = 0;
+}
+
+function InitIsShowOdds() {
+    if (isResult) {
+
+        $('.oddstd').hide();
+        $('.oddsHead').hide();
+    } else {
+        $('.oddstd').show();
+        $('.oddsHead').show();
+    }
+}
+
+function formatTime(t) {
+    var h = t.getHours();
+    var m = t.getMinutes();
+    var result = "";
+    if (h < 10) h = "0" + h;
+    if (m < 10) m = "0" + m;
+    return h + ":" + m;
+}
+
+function getBgClass() {
+    if (_colorParam > 0 && _colorParam < 9) {
+        return "cbg_" + _colorParam;
+    }
+    else return "cbg_0";
+}
+
+function MakeTable() {
+    var state, league = "", tmp_corner, tmp_half, match_half = " - ", match_corner = " - ";
+    var H_redcard, G_redcard, H_yellow, G_yellow;
+    var leagueIndex = 0, oldLeagueIndex = 0, ad = 0;
+
+    var html = new Array();
+    html.push("<table id='table_live' width=100% align=center cellspacing=0 border=0 cellpadding=0><tr id='tr_0' class='scoretitle'>");
+    html.push("<td width='2.4%'>&nbsp;</td><td width=10% colspan=2>" + _locModel.T.T_Time + "</td><td width=22% align=right>" + _locModel.T.T_Home + "</td><td id='ScoreTh' width=9%>" + _locModel.T.T_Score + "</td><td width=22% align=left>" + _locModel.T.T_Away + "</td><td width=6% id='HtTh' class='c_ht'>" + _locModel.T.T_TH_CHT + "</td><td class='data_td' style='width:12%'>" + _locModel.T.T_Data + "</td><td id='oddsHead' width=16% colspan=3 class='oddsHead'>" + companyName+"</td></tr>");
+
+    idList = getNodeContent(oddsHttp.responseXML.documentElement.childNodes[1].childNodes[0]);
+    if (typeof (idList) == "undefined" || idList == null) idList = "";
+    if (matchcount == 0) html.push("<tr><td colspan=11 height=40>No match.</td></tr>");
+
+    hsLetGoal = new Hashtable(); //让球盘口哈希表 key:盘口,value:位置列表("0,3,5....")
+    hsBigSmallGoal = new Hashtable(); //大小盘口哈希表
+    var bgClass = getBgClass();
+    var dataLidx = 1;
+    var sclassID = 0;
+    var hh = 0;
+
+    for (var i = 1; i <= matchcount; i++) {
+        try {
+            leagueIndex = A[i][1];
+
+            RS[i] = new Array(2);
+            if (idList.indexOf(A[i][0]) < 0) {
+                RS[i][0] = -1;
+                if (odds_2in1) continue;
+                else RS[i][0] = 0;
+            }
+            else {
+                RS[i][0] = 1;
+            }
+
+            var strGoal = "No Odds";
+            if (A[i][21] || parseInt(A[i][21]) == 0)
+                strGoal = A[i][21];
+            if (hsLetGoal.contains(strGoal)) {
+                var iList = hsLetGoal.items(strGoal);
+                iList += "," + i;
+                hsLetGoal.add(strGoal, iList);
+            }
+            else
+                hsLetGoal.add(strGoal, i.toString());
+
+            strGoal = "No Odds";
+            if (A[i][25] || parseInt(A[i][25]) == 0)
+                strGoal = A[i][25];
+            if (hsBigSmallGoal.contains(strGoal)) {
+                var iList = hsBigSmallGoal.items(strGoal);
+                iList += "," + i;
+                hsBigSmallGoal.add(strGoal, iList);
+            }
+            else
+                hsBigSmallGoal.add(strGoal, i.toString());
+            if (Bf_simply_disp && B[leagueIndex][4] == 0) {
+                hh++;
+                continue;
+            }
+            //	    A[i][22]=A[i][22].replace(/\<.*\>/g,"");
+
+            state = parseInt(A[i][8]);
+            match_half = " - ";
+            match_corner = " - ";
+            switch (state) {
+                case 0:
+                    if (A[i][19] == "1") match_score = "Lineup"; else match_score = " - ";
+                    break;
+                case 1:
+                    match_score = A[i][9] + " - " + A[i][10];
+                    match_corner = A[i][27] + " - " + A[i][28];
+                    break;
+                case -10: //取消
+                case -11:
+                case -12: //腰斩
+                case -14:
+                    match_score = " - ";
+                    break;
+                default:
+                    match_score = A[i][9] + " - " + A[i][10];
+                    if (A[i][11] == null) A[i][11] = "";
+                    if (A[i][12] == null) A[i][12] = "";
+                    match_half = A[i][11] + " - " + A[i][12];
+                    match_corner = A[i][27] + " - " + A[i][28];
+                    break;
+            }
+            if (A[i][13] != "0") H_redcard = "<span class='redcard'>" + A[i][13] + "</span>"; else H_redcard = "";
+            if (A[i][14] != "0") G_redcard = "<span class='redcard'>" + A[i][14] + "</span>"; else G_redcard = "";
+            if (A[i][15] != "0") H_yellow = "<span class='yellowcard'>" + A[i][15] + "</span>"; else H_yellow = "";
+            if (A[i][16] != "0") G_yellow = "<span class='yellowcard'>" + A[i][16] + "</span>"; else G_yellow = "";
+            if (A[i][17] != "") A[i][17] = "<font class=red>[" + A[i][17] + "]</font>";
+            if (A[i][18] != "") A[i][18] = "<font class=red>[" + A[i][18] + "]</font>";
+
+            if (i % 2 == 0) bg = ""; else bg = bgClass;
+
+            //日期兼容格式
+            var t2 = convertTime(A[i][6]);
+            t2 = new Date(Date.UTC(t2.getFullYear(), t2.getMonth(), t2.getDate(), t2.getHours(), t2.getMinutes(), t2.getSeconds()));
+
+            if (state == -1) classx2 = "red"; else classx2 = "blue";
+            if (oldLeagueIndex != leagueIndex) {
+                oldLeagueIndex = leagueIndex;
+                //html.push("<tr class='Leaguestitle' id='tr_" + leagueIndex + "'><td colspan='8'><span class='l1'><a href='#'>" + B[leagueIndex][2] + "</a> " + (t2.getMonth() + 1) + "/" + t2.getDate() + "/" + t2.getFullYear() + " (" + week[t2.getDay()] + ")</span><span class='l2'><a href='javascript:HiddenLeague(" + leagueIndex + ",false)' id='collapse" + leagueIndex + "'><img src='images/collapse.gif'/></a><a href='javascript:HiddenLeague(" + leagueIndex + ",true)' id='expand" + leagueIndex + "' style='display:none;'><img src='images/expand.gif'/></a><a href='javascript:CloseLeague(" + leagueIndex + ") '><img src='images/closes.gif'/></a></span></td></tr>");
+
+                sclassID = B[A[i][1]][0];
+                html.push("<tr class='Leaguestitle fbHead'  id='tr_" + leagueIndex + "'  leaIndex='" + leagueIndex + "'  data-lidx='" + dataLidx + "' sclassID='" + sclassID + "' isLeaTop='0'>");
+                html.push("<td colspan='11'><div class='l1'><a href='javascript:" + (B[A[i][1]][5] != "" ? "OpenFbSclass(" + B[A[i][1]][0] + ")" : "void(0)") + "'>" + (B[leagueIndex][8] == undefined ? B[leagueIndex][2] : B[leagueIndex][8]) + "</a> " + timeToText(t2, 12) + " </div><div class='l2'>");
+
+                html.push("<span class='l5'><span class='hidden-info r0'><a href=\"javascript:HiddenLeague(" + leagueIndex + ",false)\" id='collapse" + leagueIndex + "' class='collapse'></a></span><span class='display-info r0'><a href=\"javascript:HiddenLeague(" + leagueIndex + ",true)\" id='expand" + leagueIndex + "' style='display:none;' class='expand'></a></span></span>")
+                html.push("<span id='tips_" + leagueIndex + "' class='l5 tipsNum'>" + _locModel.T.T_DisplayMatch + "(<span id='tips_num_" + leagueIndex + "'></span>)</span>");
+                html.push("</div></td></tr>");
+                dataLidx++;
+            }
+            html.push("<tr id='tr1_" + A[i][0] + "' class='tds " + bg + "' index='" + i + "' odds='' leaIndex='" + leagueIndex + "'>");
+            html.push("<td><img src='/images/lclose.png' width='7' height='7' onclick='hidematch(" + i + ");' style='cursor:pointer;'/></td>");
+            html.push("<td width=0 style='display:none;'></td>");
+            html.push("<td name='timeData' data-t='" + A[i][6] + "' data-tf='4' class='time' id='mt_" + A[i][0] + "' width='5%' onclick='openFbDetail(" + A[i][0] + ")'>" + formatTime(t2) + "</td>");
+            html.push("<td class='status' id='time_" + A[i][0] + "' class='td_status' onclick='openFbDetail(" + A[i][0] + ")' width=5% >" + state_ch[state + 14] + "</td>");
+            html.push("<td id='tvLink_" + A[i][0] + "' style = 'display:none;'></td>");
+            html.push("<td style='text-align:right' ><span id=horder_" + A[i][0] + "></span><a id='yellow1_" + A[i][0] + "'>" + H_yellow + "</a><a id='redcard1_" + A[i][0] + "'>" + H_redcard + "</a> <a id='team1_" + A[i][0] + "' href='javascript:void(0)'>" + A[i][4] + "</a></td>");
+            html.push("<td onclick='openFbDetail(" + A[i][0] + ")' onclick='openFbDetail(" + A[i][0] + ")' class='f-b " + classx2 + "' onmouseover='showdetail(" + i + ",event)' onmouseout='hiddendetail()'>" + match_score + "</td>");
+            html.push("<td style='text-align:left'><a id='team2_" + A[i][0] + "' href='javascript:void(0)'>" + A[i][5] + "</a> <a id='redcard2_" + A[i][0] + "'>" + G_redcard + "</a><a id='yellow2_" + A[i][0] + "'>" + G_yellow + "</a><span id=gorder_" + A[i][0] + "></span></td>");
+
+            //html.push("<td class=red2>" + match_half + "</td>");
+            html.push("<td>");
+            tmp_half = "";
+            tmp_corner = "onmouseover='showSBCorner(" + i + ",event)' onmouseout=\"hiddenSbCorner();\" style=\"cursor:pointer;display:block;\"";
+            if (A[i][29] != "1") match_corner = "&nbsp;";
+            var cr_class = " class=blue2 ";
+            if (state == -1) cr_class = "";
+            if (match_corner == " - ") html.push("<span id='cr_" + A[i][0] + "'" + tmp_corner + " class='conner_span'>" + match_corner + "</span>");
+            else html.push("<span id='cr_" + A[i][0] + "'" + tmp_corner + cr_class + " >" + match_corner + "</span>");
+
+            if (match_half == " - ") html.push("<span id='hht_" + A[i][0] + "' " + tmp_half + " >" + match_half + "</span>");
+            else html.push("<span id='hht_" + A[i][0] + "' " + tmp_half + " class=red2>" + match_half + "</span>");
+
+            html.push("</td>");
+
+            var hTeam = escapeChar(skipHtmlTagBoth(A[i][4]));
+            var gTeam = escapeChar(skipHtmlTagBoth(A[i][5]));
+            html.push("<td class='toolimg'><span onclick='openFbAnalysis(" + A[i][0] + ",\"" + hTeam + "\",\"" + gTeam + "\")' class='analyze-icon l0'></span><span onclick='opentFbOddsComp(" + A[i][0] + ",\"" + hTeam + "\",\"" + gTeam + "\")'  class='odds-icon l0'></span><span onclick='openFbDetail(" + A[i][0] + ",\"" + hTeam + "\",\"" + gTeam + "\")' class='Detail-icon l0'></span>");
+            //html.push("<td class='toolimg'><a href='javascript:analysis(" + A[i][0] + ")' class='analyze-icon l0'></a><a href='javascript:Odds(" + A[i][0] + ")'  class='odds-icon l0'></a><a href='javascript:openFbDetail(" + A[i][0] + ")' class='Detail-icon l0'></a>");
+            html.push("<span id='zd_" + A[i][0] + "'></span>");
+            html.push("</td>");
+
+            var showPointer = "style='cursor:pointer;'";
+            if (isResult || companyID != "3") showPointer = "";
+            html.push("<td class=oddstd onmouseover='showOddsChange(" + i + ",event)' onmouseout=\"hideOddsDetail();\" " + showPointer + "> </td>");
+            html.push("<td class=oddstd onmouseover='showOddsChange(" + i + ",event)' onmouseout=\"hideOddsDetail();\" " + showPointer + ">&nbsp;</td>");
+            html.push("<td class=oddstd onmouseover='showOddsChange(" + i + ",event)' onmouseout=\"hideOddsDetail();\" " + showPointer + "> </td>");
+            html.push("</tr>");
+
+            //if((A[i][22] == "" && A[i][24] == "")||(A[i][22] == "" && showExplain(A[i][24],A[i][4],A[i][5])=="")) classx="none"; else classx="";		
+            var explain = showExplain(A[i][24], A[i][4], A[i][5]);
+            if (explain == "") classx = "none"; else classx = "";
+            html.push("<tr id='tr2_" + A[i][0] + "' style='display:" + classx + "' leaIndex='" + leagueIndex + "'><td colspan=12 align=center class='text-info'><span id='other_" + A[i][0] + "'>");
+
+            if (A[i][24] && A[i][24] != "")
+                html.push(explain);
+            html.push("</span></td></tr>");
+        } catch (e) { }
+    }
+    html.push("</table>")
+    document.getElementById("live").innerHTML = html.join("");
+    if (hh > 0) document.getElementById("hiddencount").innerHTML = hh;
+}
+
+function MakeTableByTime() {
+    var state, day = "", match_half = " - ", match_corner = " - ";
+    var H_redcard, G_redcard, H_yellow, G_yellow;
+    var showResultTr = false;
+    var ad = 0;
+    var bgClass = getBgClass();
+    var html = new Array();
+    html.push("<table id='table_live' width=100% align=center cellspacing=0 border=0 cellpadding=0><tr id='tr_0' class='scoretitle'>");
+    //html.push("<td width=3%>&nbsp;</td><td  height=20 width=9%>League</td><td  width=6%>Time</td><td  width=6%>Status</td><td width=25% align=right>Home</td><td  width=9%>Score</td><td width=25% align=left>Away</td><td width=6%>H-T</td><td  width=11%>Data</td></tr>");
+    html.push("<td width='2.4%' height=20>&nbsp;</td><td width=7.1%>" + _locModel.T.T_League + "</td><td  width=9% colspan=2>" + _locModel.T.T_Time + "</td><td width=20% align=right>" + _locModel.T.T_Home + "</td><td id='ScoreTh' width=7.5%>" + _locModel.T.T_Score + "</td><td width=20% align=left>" + _locModel.T.T_Away + "</td><td width=6% id='HtTh' class='c_ht'>" + _locModel.T.T_TH_CHT + "</td><td class='data_td'  style='width:12%'>" + _locModel.T.T_Data + "</td><td id='oddsHead' width=16% colspan=3 class='oddsHead'>" + companyName+"</td></tr>");
+    var hh = 0;
+    var idList;
+    idList = getNodeContent(oddsHttp.responseXML.documentElement.childNodes[1]);
+    hsLetGoal = new Hashtable(); //让球盘口哈希表 key:盘口,value:位置列表("0,3,5....")
+    hsBigSmallGoal = new Hashtable(); //大小盘口哈希表
+    for (var i = 1; i <= matchcount; i++) {
+        try {
+            if (Bf_simply_disp && B[A[i][1]][4] == 0) {
+                hh++;
+                continue;
+            }
+
+            RS[i] = new Array(2);
+            //RS[i][0] -1:no odds, 0: no odds display, 1:has odds
+            if (idList.indexOf(A[i][0]) < 0) {
+                RS[i][0] = -1;
+                if (odds_2in1) continue;
+                else RS[i][0] = 0;
+            }
+            else {
+                RS[i][0] = 1;
+            }
+
+            //盘口选择/查询数据加载
+            var strGoal = "No Odds";
+            if (A[i][21] || parseInt(A[i][21]) == 0)
+                strGoal = A[i][21];
+            if (hsLetGoal.contains(strGoal)) {
+                var iList = hsLetGoal.items(strGoal);
+                iList += "," + i;
+                hsLetGoal.add(strGoal, iList);
+            }
+            else
+                hsLetGoal.add(strGoal, i.toString());
+            strGoal = "No Odds";
+            if (A[i][25] || parseInt(A[i][25]) == 0)
+                strGoal = A[i][25];
+            if (hsBigSmallGoal.contains(strGoal)) {
+                var iList = hsBigSmallGoal.items(strGoal);
+                iList += "," + i;
+                hsBigSmallGoal.add(strGoal, iList);
+            }
+            else
+                hsBigSmallGoal.add(strGoal, i.toString());
+
+            //	    A[i][22]=A[i][22].replace(/\<.*\>/g,"");
+            state = parseInt(A[i][8]);
+            match_half = " - ";
+            match_corner = " - ";
+            switch (state) {
+                case 0:
+                    if (A[i][19] == "1") match_score = "Lineup"; else match_score = " - ";
+                    break;
+                case 1:
+                    match_score = A[i][9] + " - " + A[i][10];
+                    match_corner = A[i][27] + " - " + A[i][28];
+                    break;
+                case -10: //取消
+                case -11:
+                case -12: //腰斩
+                case -14:
+                    match_score = " - ";
+                    break;
+                default:
+                    match_score = A[i][9] + " - " + A[i][10];
+                    if (A[i][11] == null) A[i][11] = "";
+                    if (A[i][12] == null) A[i][12] = "";
+                    match_half = A[i][11] + " - " + A[i][12];
+                    match_corner = A[i][27] + " - " + A[i][28];
+                    break;
+            }
+            if (A[i][13] != "0") H_redcard = "<span class='redcard'>" + A[i][13] + "</span>"; else H_redcard = "";
+            if (A[i][14] != "0") G_redcard = "<span class='redcard'>" + A[i][14] + "</span>"; else G_redcard = "";
+            if (A[i][15] != "0") H_yellow = "<span class='yellowcard'>" + A[i][15] + "</span>"; else H_yellow = "";
+            if (A[i][16] != "0") G_yellow = "<span class='yellowcard'>" + A[i][16] + "</span>"; else G_yellow = "";
+            if (A[i][17] != "") A[i][17] = "<font class=red>[" + A[i][17] + "]</font>";
+            if (A[i][18] != "") A[i][18] = "<font class=red>[" + A[i][18] + "]</font>";
+
+            if (i % 2 == 0) bg = ""; else bg = bgClass;
+
+            //日期兼容格式
+            var t2 = convertTime(A[i][6]);
+            t2 = new Date(Date.UTC(t2.getFullYear(), t2.getMonth(), t2.getDate(), t2.getHours(), t2.getMinutes(), t2.getSeconds()));
+
+            if (state == -1) classx2 = "red"; else classx2 = "blue";
+            if (state < 0 && !showResultTr) {
+                showResultTr = true;
+                html.push("<tr align=center class='adtext-bg2' height=20><td colspan=12><b>" + _locModel.T.T_Results + "</b></td></tr>");
+            }
+            if (state >= 0 && day != t2.getDate()) {
+                day = t2.getDate();
+                //html.push("<tr class='Leaguestitle'><td colspan=4></td><td colspan=3><b>" + (t2.getMonth() + 1) + "/" + t2.getDate() + "/" + t2.getFullYear() + " (" + week[t2.getDay()] + ")</b></td><td colspan=2><a href='<%=UrlService.ToMainUrl()%>' target=_blank><b><font color=blue>Power by goaloo</font></b></a></td></tr>");
+                html.push("<tr class='Leaguestitle' date='" + day + "'><td colspan=8><b>" + timeToText(t2, 12) + "</b></td><td colspan=4><a href='" + _mainWebDomain + "' target=_blank><b class=needHide><font class=blue>" + _locModel.T.T_PowerBy + "</font></b></a></td></tr>");
+            }
+
+            html.push("<tr id='tr1_" + A[i][0] + "' class='" + bg + "' index='" + i + "' odds='' date='" + day + "'>");
+            html.push("<td height=30><img src='/images/lclose.png' width='7' height='7' onclick='hidematch(" + i + ");' style='cursor:pointer;'/></td>");
+            html.push("<td class='black-down' bgcolor=" + B[A[i][1]][3] + " style='color:white;' title='" + B[A[i][1]][2] + "'><a href='javascript:" + (B[A[i][1]][5] != "" ? "OpenFbSclass(" + B[A[i][1]][0] + ")" : "void(0)") + "' style='color:white;'>" + B[A[i][1]][1] + "</a></td>");
+            html.push("<td name='timeData' data-t='" + A[i][6] + "'  data-tf='4' class='time' id='mt_" + A[i][0] + "'width='5%' onclick='openFbDetail(" + A[i][0] + ")'>" + formatTime(t2) + "</td>");
+            html.push("<td class='status' id='time_" + A[i][0] + "' class='td_status' width='4%' onclick='openFbDetail(" + A[i][0] + ")' >" + state_ch[state + 14] + "</td>");
+            html.push("<td id='tvLink_" + A[i][0] + "' style = 'display:none;'></td>");
+            html.push("<td onclick='openFbPanlu(" + A[i][0] + ")' style='text-align:right'><a id='yellow1_" + A[i][0] + "'>" + H_yellow + "</a><a id='redcard1_" + A[i][0] + "'>" + H_redcard + "</a> <a id='team1_" + A[i][0] + "' href='javascript:void(0)'>" + A[i][4] + "</a></td>");
+            html.push("<td onclick='openFbDetail(" + A[i][0] + ")' class='" + classx2 + "' onmouseover='showdetail(" + i + ",event)' onmouseout='hiddendetail()'>" + match_score + "</td>");
+            html.push("<td style='text-align:left' onclick='openFbPanlu(" + A[i][0] + ")'><a id='team2_" + A[i][0] + "' href='javascript:void(0)'>" + A[i][5] + "</a> <a id='redcard2_" + A[i][0] + "'>" + G_redcard + "</a><a id='yellow2_" + A[i][0] + "'>" + G_yellow + "</a></td>");
+            //html.push("<td class=red2>" + match_half + "</td>");
+
+            //corner and Half
+            tmp_half = "";
+            tmp_corner = "onmouseover='showSBCorner(" + i + ",event)' onmouseout=\"hiddenSbCorner();\" style=\"cursor:pointer;display:block;\"";
+            html.push("<td>");
+
+            var cr_class = " class='blue2 conner_span'";
+            if (A[i][29] != "1") match_corner = "";
+            if (state == -1) cr_class = "class='conner_span'";
+
+            if (match_corner == " - ") html.push("<span id='cr_" + A[i][0] + "'" + tmp_corner + " class='conner_span'>" + match_corner + "</span>");
+            else html.push("<span id='cr_" + A[i][0] + "'" + tmp_corner + cr_class + " >" + match_corner + "</span>");
+            //html.push("<br/>");
+            if (match_half == " - ") html.push("<span id='hht_" + A[i][0] + "' " + tmp_half + " >" + match_half + "</span>");
+            else html.push("<span id='hht_" + A[i][0] + "' " + tmp_half + " class=red2>" + match_half + "</span>");
+
+            html.push("</td>");
+            var hTeam = escapeChar(skipHtmlTagBoth(A[i][4]));
+            var gTeam = escapeChar(skipHtmlTagBoth(A[i][5]));
+            html.push("<td class='toolimg'><span onclick='openFbAnalysis(" + A[i][0] + ",\"" + hTeam + "\",\"" + gTeam + "\")' class='analyze-icon l0'></span><span onclick='opentFbOddsComp(" + A[i][0] + ",\"" + hTeam + "\",\"" + gTeam + "\")'  class='odds-icon l0'></span><span onclick='openFbDetail(" + A[i][0] + ",\"" + hTeam + "\",\"" + gTeam + "\")' class='Detail-icon l0'></span>");
+            //html.push("<td class='toolimg'><a href='javascript:analysis(" + A[i][0] + ")' class='analyze-icon'></a><a href='javascript:Odds(" + A[i][0] + ")' class='odds-icon'></a><a href='javascript:openFbDetail(" + A[i][0] + ")' class='Detail-icon'></a>");
+            html.push("<span id='zd_" + A[i][0] + "'></span>");
+            html.push("</td>");
+            var showPointer = "style='cursor:pointer;'";
+            if (isResult || companyID != "3") showPointer = "";
+            html.push("<td class=oddstd onmouseover='showOddsChange(" + i + ",event)' onmouseout=\"hideOddsDetail();\" " + showPointer + ">&nbsp;</td>");
+            html.push("<td class=oddstd onmouseover='showOddsChange(" + i + ",event)' onmouseout=\"hideOddsDetail();\" " + showPointer + "> </td>");
+            html.push("<td class=oddstd onmouseover='showOddsChange(" + i + ",event)' onmouseout=\"hideOddsDetail();\" " + showPointer + "> </td>");
+            html.push("</tr>");
+
+            //if ((A[i][22] == "" && A[i][24] == "") || (A[i][22] == "" && showExplain(A[i][24], A[i][4], A[i][5]) == "")) classx = "none"; else classx = "";
+            var explain = showExplain(A[i][24], A[i][4], A[i][5]);
+            if (hideMode || explain == "") classx = "none"; else classx = "";
+
+            html.push("<tr id='tr2_" + A[i][0] + "' style='display:" + classx + "' class='text-info'><td colspan=12 align=center height=18 style='padding-left:10px;' id='other_" + A[i][0] + "'>");
+
+            if (A[i][24] && A[i][24] != "")
+                html.push(explain);
+
+            html.push("</td></tr>"); 
+
+        } catch (e) { }
+    }
+    html.push("</table>")
+    document.getElementById("live").innerHTML = html.join("");
+    if (hh > 0) document.getElementById("hiddencount").innerHTML = hh;
+}
+
+function showodds(oHttpObj) {
+    if (typeof (oHttpObj) == "undefined" || oHttpObj == null) return;
+    var root = oHttpObj.responseXML.documentElement.childNodes[0];
+    var D = new Array();
+    var tPL = new Array();
+    var odds, old = new Array();
+    var oddsMark = false, runningMark = false, isRunning = false, isClose = false;
+    for (var i = 0; i < root.childNodes.length; i++) {
+        odds = getNodeContent(root.childNodes[i]); //id,oddsid,goal,home,away,oddsid,hw,st,gw
+        D = odds.split(",");
+        var d2 = D[2];
+        var d10 = D[10];
+        oddsMark = false;
+        runningMark = false;
+        isRunning = false;
+        isClose = false;
+        tPL = oTool.getPL(_oddsType, D[3], D[2], D[4]);
+        D[3] = tPL[0]; D[2] = tPL[1]; D[4] = tPL[2];
+        tPL = oTool.getPL(_oddsType, D[6], D[7], D[8], true);
+        D[6] = tPL[0]; D[7] = tPL[1]; D[8] = tPL[2];
+        tPL = oTool.getPL(_oddsType, D[11], D[10], D[12]);
+        D[11] = tPL[0]; D[10] = tPL[1]; D[12] = tPL[2];
+
+        odds = D.join(",");
+
+        tr = document.getElementById("tr1_" + D[0]);
+        if (tr == null) continue;
+
+        if (_isOddsChanging) {
+            D[2] = Goal2GoalCn(D[2]);
+            D[10] = Goal2CnOU(D[10]);
+        }
+        else {
+            old = tr.attributes["odds"].value.split(",");
+            if (old.length >= 13 && old != odds) {
+                for (var j = 2; j < 13; j++) {
+                    if (old[j] != "") {
+                        if (D[j] > old[j]) D[j] = (j == 2) ? ("<span class=up>" + Goal2GoalCn(D[j]) + "</span>") : ((j == 10) ? ("<span class=up>" + Goal2CnOU(D[j]) + "</span>") : ("<span class=up>" + D[j] + "</span>"));
+                        else if (D[j] < old[j]) D[j] = (j == 2) ? ("<span class=down>" + Goal2GoalCn(D[j]) + "</span>") : ((j == 10) ? ("<span class=down>" + Goal2CnOU(D[j]) + "</span>") : ("<span class=down>" + D[j] + "</span>"));
+                    }
+                }
+                //PlayeddsSound(D[0]);
+            }
+
+            if (old.length == 14 && old != odds && old[2] != "") {
+                if (D[2] > old[2]) D[2] = "<span class=up>" + Goal2GoalCn(D[2]) + "</span>";
+                else if (D[2] < old[2]) D[2] = "<span class=down>" + Goal2GoalCn(D[2]) + "</span>";
+                else D[2] = Goal2GoalCn(D[2]);
+            }
+            else {
+                if (!isNaN(D[2])) D[2] = Goal2GoalCn(D[2]);
+            }
+
+            if (old.length == 14 && old != odds && old[10] != "") {
+                if (D[10] > old[10]) D[10] = "<span class=up>" + Goal2CnOU(D[10]) + "</span>";
+                else if (D[10] < old[10]) D[10] = "<span class=down>" + Goal2CnOU(D[10]) + "</span>";
+                else D[2] = Goal2CnOU(D[2]);
+            }
+            else {
+                if (!isNaN(D[10])) D[10] = Goal2CnOU(D[10]);
+            }
+
+        }
+
+        var cellContents = ["", "", ""];
+
+        // HDP
+        cellContents[0] += "<p class=odds1>" + ((D[14] == "0" || isResult) ? FilterEmpty(D[3]) : "&nbsp;") + "</p>";
+        cellContents[1] += "<p class=odds1>" + ((D[14] == "0" || isResult) ? FilterEmpty(D[2]) : (D[14] == "1" && D[17] != "0") ? _locModel.T.T_ST_Closed : "&nbsp;") + "</p>";
+        cellContents[2] += "<p class=odds1>" + ((D[14] == "0" || isResult) ? FilterEmpty(D[4]) : "&nbsp;") + "</p>";
+        // 1x2
+        cellContents[0] += "<p class=odds2>" + ((D[15] == "0" || isResult) ? FilterEmpty(D[6]) : "&nbsp;") + "</p>";
+        cellContents[1] += "<p class=odds2>" + ((D[15] == "0" || isResult) ? FilterEmpty(D[7]) : (D[15] == "1" && D[19] != "0") ? _locModel.T.T_ST_Closed : "&nbsp;") + "</p>";
+        cellContents[2] += "<p class=odds2>" + ((D[15] == "0" || isResult) ? FilterEmpty(D[8]) : "&nbsp;") + "</p>";
+        // OU
+        cellContents[0] += "<p class=odds3>" + ((D[16] == "0" || isResult) ? FilterEmpty(D[11]) : "&nbsp;") + "</p>";
+        cellContents[1] += "<p class=odds3>" + ((D[16] == "0" || isResult) ? FilterEmpty(D[10]) : (D[16] == "1" && D[18] != "0") ? _locModel.T.T_ST_Closed : "&nbsp;") + "</p>";
+        cellContents[2] += "<p class=odds3>" + ((D[16] == "0" || isResult) ? FilterEmpty(D[12]) : "&nbsp;") + "</p>";
+
+        if ((CheckEmpty(D[7]) || D[15] != "0") && (CheckEmpty(D[10]) || D[16] != "0") && (CheckEmpty(D[2]) || D[14] != "0")) isClose = true;
+        if (D[17] != "0" || D[18] != "0" || D[19] != "0") oddsMark = true;
+        if (D[17] == "3" || D[18] == "3" || D[19] == "3") runningMark = true;
+        tr.cells[10].innerHTML = cellContents[0];
+        tr.cells[11].innerHTML = cellContents[1];
+        tr.cells[12].innerHTML = cellContents[2];
+
+        tr.attributes["odds"].value = odds;
+
+        var zoudiEl = document.getElementById("zd_" + D[0]);
+
+        if (zoudiEl != undefined) {
+            var idx = tr.getAttribute("index");
+            isRunning = runningMark && A[parseInt(idx)][8] > 0 && !isClose;
+            if (isRunning) D[13] = 2;
+            else if (oddsMark) D[13] = 1;
+            else D[13] = 0;
+            if (D[13] != "0") {
+                zoudiEl.innerHTML = "<span onclick='openFb3in1(" + D[0] + "," + companyID + ")' target='_blank' class='threeinone-icon l0'><img src='/images/" + (parseInt(D[13]) == 2 ? "t32" : "t3") + ".png' ></span>";
+                if (idx) RS[parseInt(idx)][1] = 1;
+            }
+            else {
+                zoudiEl.innerHTML = "";
+                if (idx) RS[parseInt(idx)][1] = 0;
+            }
+        }
+    }
+}
+
+function getoddsxml() {
+    oddsHttp_ch.open("get", "/gf/data/odds/en/ch_goal" + companyID + ".xml?" + Date.parse(new Date()), true);
+    oddsHttp_ch.onreadystatechange = oddsrefresh;
+    oddsHttp_ch.send(null);
+    window.setTimeout("getoddsxml()", 3000);
+}
+function oddsrefresh() {
+    if (oddsHttp_ch.readyState != 4 || (oddsHttp_ch.status != 200 && oddsHttp_ch.status != 0)) return;
+    if (oldOddsXML == oddsHttp_ch.responseText) {
+        return;
+    }
+    oldOddsXML = oddsHttp_ch.responseText;
+    showodds(oddsHttp_ch);
+}
+
+function getAlignText(isCenter) {
+    if (isCenter) return " style='text-align:center;' ";
+    else return " style='text-align:left;' ";
+}
+
+var oXmlHttp = zXmlHttp.createRequest();
+function getxml() {
+    oXmlHttp.open("get", "/gf/data/change_en.xml?" + Date.parse(new Date()), true);
+    oXmlHttp.onreadystatechange = refresh;
+    oXmlHttp.send(null);
+    window.setTimeout("getxml()", 4000);
+}
+function refresh() {
+    try {
+        if (oXmlHttp.readyState != 4 || (oXmlHttp.status != 200 && oXmlHttp.status != 0)) return;
+        lastUpdateTime = new Date();
+        var root = oXmlHttp.responseXML.documentElement;
+        if (oldXML == "" || oldXML == oXmlHttp.responseText) {
+            oldXML = oXmlHttp.responseText;
+            return;
+        }
+        oldXML = oXmlHttp.responseText;
+        if (root.attributes[0].value != "0") {
+            window.setTimeout("LoadLiveFile()", Math.floor(20000 * Math.random()));
+            return;
+        }
+
+        var D = new Array();
+        var matchindex, score1change, score2change, scorechange, stateChanged;
+        var goTime, hometeam, guestteam, sclassname, score1, score2, tr;
+        var homeIcon = "";
+        var guestIcon = "";
+        var homeRedCard = false;
+        var guestRedCard = false;
+        var matchNum = 0;
+        var winStr = "";
+        var notify = document.getElementById("notify").innerHTML;
+
+        for (var i = 0; i < root.childNodes.length; i++) {
+            if (document.all && getIENumber() < 10)
+                D = root.childNodes[i].text.split("^"); //0:ID,1:state,2:score1,3:score2,4:half1,5:half2,6:card1,7:card2,8:yellow1,9:yellow2,10:time1,11:time2,12:explain,13:lineup
+            else
+                D = root.childNodes[i].textContent.split("^");
+
+            tr = document.getElementById("tr1_" + D[0]);
+            if (tr == null) continue;
+
+            D[1] = parseInt(D[1]);
+            matchindex = tr.attributes["index"].value;
+            score1change = false;
+            if (A[matchindex][9] != D[2]) {
+                A[matchindex][9] = D[2];
+                score1change = true;
+                tr.cells[5].style.backgroundColor = "#bbbb22";
+            }
+            score2change = false;
+            if (A[matchindex][10] != D[3]) {
+                A[matchindex][10] = D[3];
+                score2change = true;
+                tr.cells[7].style.backgroundColor = "#bbbb22";
+            }
+            scorechange = score1change || score2change;
+
+            D[12] = checkExlink(D[12]);
+
+            //red card
+            if (D[6].trim() != A[matchindex][13]) {
+                A[matchindex][13] = D[6];
+                if (D[6] == "0")
+                    document.getElementById("redcard1_" + D[0]).innerHTML = "";
+                else
+                    document.getElementById("redcard1_" + D[0]).innerHTML = "<span class='redcard'>" + D[6] + "</span>";
+                if (document.getElementById("RedCheck").checked) tr.cells[5].style.backgroundColor = "#ff8888";
+                window.setTimeout("timecolors(" + D[0] + "," + matchindex + ")", 12000);
+                homeRedCard = true;
+                homeIcon = "<img class='sjicon' src='/images/redcard.png'>";
+                if (_appModule == "Vn")
+                    homeIcon = "<img class='sjicon' src='/images/vn/redcard.png'>";
+            }
+            if (D[7].trim() != A[matchindex][14]) {
+                A[matchindex][14] = D[7];
+                if (D[7] == "0")
+                    document.getElementById("redcard2_" + D[0]).innerHTML = "";
+                else
+                    document.getElementById("redcard2_" + D[0]).innerHTML = "<span class='redcard'>" + D[7] + "</span>";
+                if (document.getElementById("RedCheck").checked) tr.cells[7].style.backgroundColor = "#ff8888";
+                window.setTimeout("timecolors(" + D[0] + "," + matchindex + ")", 12000);
+                guestRedCard = true;
+                guestIcon = "<img class='sjicon' src='/images/redcard.png'>";
+                if (_appModule == "Vn")
+                    guestIcon = "<img class='sjicon' src='/images/vn/redcard.png'>";
+            }
+            //yellow card
+            if (D[8] != A[matchindex][15]) {
+                A[matchindex][15] = D[8];
+                if (D[8] == "0")
+                    document.getElementById("yellow1_" + D[0]).innerHTML = "";
+                else
+                    document.getElementById("yellow1_" + D[0]).innerHTML = "<span class='yellowcard'>" + D[8] + "</span>";
+            }
+            if (D[9] != A[matchindex][16]) {
+                A[matchindex][16] = D[9];
+                if (D[9] == "0")
+                    document.getElementById("yellow2_" + D[0]).innerHTML = "";
+                else
+                    document.getElementById("yellow2_" + D[0]).innerHTML = "<span class='yellowcard'>" + D[9] + "</span>";
+            }
+
+            //time
+            if (A[matchindex][6] != D[10]) {
+                var t2 = convertTime(D[10]);
+                t2 = new Date(Date.UTC(t2.getFullYear(), t2.getMonth(), t2.getDate(), t2.getHours(), t2.getMinutes(), t2.getSeconds()));
+                tr.cells[2].innerHTML = formatTime(t2);
+            }
+            A[matchindex][6] = D[10];
+            A[matchindex][7] = D[11];
+
+            //h-t
+            var htElem = document.getElementById("hht_" + A[matchindex][0]);
+            if (A[matchindex][11] != D[4] || A[matchindex][12] != D[5]) {
+                A[matchindex][11] = D[4];
+                A[matchindex][12] = D[5];
+                if (htElem) {
+                    htElem.innerHTML = A[matchindex][11] + " - " + A[matchindex][12];
+                    if (A[matchindex][11] == "" || A[matchindex][12]) {
+                        htElem.setAttribute("class", "");
+                    }
+                    else htElem.setAttribute("class", "red2");
+                }
+            }
+
+            //corner 16 17 18
+            var crElem = document.getElementById("cr_" + A[matchindex][0]);
+            if (D[18] == "1") {
+                if (A[matchindex][27] != D[16] || A[matchindex][28] != D[17]) {
+                    A[matchindex][27] = D[16];
+                    A[matchindex][28] = D[17];
+                    if (crElem) crElem.innerHTML = A[matchindex][27] + " - " + A[matchindex][28];
+                    crElem.setAttribute("class", "blue2");
+                }
+            }
+
+            //status
+            if (A[matchindex][8] != D[1]) {
+                A[matchindex][8] = D[1];
+                stateChanged = true;
+                switch (A[matchindex][8]) {
+                    case 0:
+                        tr.cells[3].innerHTML = "";
+                        break;
+                    case 1:
+                        var t2 = convertTime(A[matchindex][7]);
+                        goTime = Math.floor((new Date() - t2 - difftime) / 60000);
+                        if (goTime > 45) goTime = "45+"
+                        if (goTime < 1) goTime = "1";
+                        tr.cells[3].innerHTML = goTime + "<img src='/images/in.gif'>";
+                        break;
+                    case 2:
+                        tr.cells[3].innerHTML = state_ch[D[1] + 14];
+                        break;
+                    case 3:
+                    case 4:
+                        var t2 = convertTime(A[matchindex][7]);
+                        goTime = Math.floor((new Date() - t2 - difftime) / 60000) + 46;
+                        if (goTime > 90) goTime = "90+";
+                        if (goTime < 46) goTime = "46";
+                        tr.cells[3].innerHTML = goTime + "<img src='/images/in.gif'>";
+                        break;
+                    case -1:
+                        tr.cells[3].innerHTML = state_ch[D[1] + 14];
+                        tr.cells[6].style.color = "red";
+                        if (crElem) crElem.setAttribute("class", "");
+
+                        if (orderby == "time") window.setTimeout("MoveToBottom(" + D[0] + ")", 25000);
+                        break;
+                    case -10:
+                        tr.cells[3].innerHTML = state_ch[D[1] + 14];
+                        break;
+                    default:
+                        tr.cells[3].innerHTML = state_ch[D[1] + 14];
+                        if (orderby == "time") MoveToBottom(D[0]);
+                        break;
+                }
+            }
+
+            //score
+            switch (A[matchindex][8]) {
+                case 0:
+                    if (D[11] == "1")
+                        tr.cells[6].innerHTML = "Lineup";
+                    else
+                        tr.cells[6].innerHTML = "-";
+                    break;
+                case 1:
+                    tr.cells[6].innerHTML = (score1change ? "<font class=red>" + A[matchindex][9] + "</font>" : A[matchindex][9]) + " - " + (score2change ? "<font color=red>" + A[matchindex][10] + "</font>" : A[matchindex][10]);
+                    break;
+                case -11:
+                case -14:
+                    tr.cells[6].innerHTML = "-";
+                    //tr.cells[7].innerHTML="-";
+                    break;
+                default:  //2 3 -1 -12 -13			
+                    tr.cells[6].innerHTML = (score1change ? "<font class=red>" + A[matchindex][9] + "</font>" : A[matchindex][9]) + " - " + (score2change ? "<font color=red>" + A[matchindex][10] + "</font>" : A[matchindex][10]);
+                    //tr.cells[7].innerHTML=A[matchindex][11] + " - " + A[matchindex][12];
+                    break;
+            }
+
+            if (scorechange) {
+                ShowFlash(D[0], matchindex);
+                if (tr.style.display != "none") {
+                    hometeam = A[matchindex][4].replace("<font class=red>(N)</font>", "").substring(0, 20);
+                    guestteam = A[matchindex][5].substring(0, 20);
+                    sclassname = B[A[matchindex][1]].length > 8 ? B[A[matchindex][1]][8] : B[A[matchindex][1]][2];  //优先取本地化翻译
+                    if (score1change) {
+                        hometeam = "<font class=red><b>" + hometeam + "</b></font>";
+                        homeIcon = "<img class='sjicon' src='/images/goal.png'>";
+                        if (_appModule == "Vn")
+                            homeIcon = "<img class='sjicon' src='/images/vn/goal.png'>";
+                        score1 = "<font class=red>" + D[2] + "</font>";
+                        score2 = "<font>" + D[3] + "</font>";
+                    }
+                    if (score2change) {
+                        guestteam = "<font class=red><b>" + guestteam + "</b></font>";
+                        guestIcon = "<img class='sjicon' src='/images/goal.png'>";
+                        if (_appModule == "Vn")
+                            guestIcon = "<img class='sjicon' src='/images/vn/goal.png'>";
+                        score1 = "<font>" + D[2] + "</font>";
+                        score2 = "<font class=red>" + D[3] + "</font>";
+                    }
+                    window.clearTimeout(nofityTimer);
+                    if (notify == "") notify = "<font color=#6666FF><B>Goal notes：</b></font>";
+                    notify += sclassname + ": " + hometeam + " <font class=blue>" + score1 + "-" + score2 + "</font> " + guestteam + " &nbsp; ";
+                    nofityTimer = window.setTimeout("clearNotify()", 20000);
+
+                    //红牌，读取原来比分，红牌方标红
+                    var scoreTxt = "-";
+                    if (!score1change && !score2change) {
+                        scoreTxt = tr.cells[6].innerHTML;
+                        if (homeRedCard)  //主队红牌
+                            hometeam = "<font class=red><b>" + hometeam + "</b></font>";
+                        if (guestRedCard)  //客队红牌
+                            guestteam = "<font class=red><b>" + guestteam + "</b></font>";
+                    } else {
+                        scoreTxt = "<b>" + score1 + "</b> - <b>" + score2 + "</b>";
+                    }
+
+                    if (windowCheck && D[1] >= -1) {
+                        winStr += `<table id='flGoalDiv' width=500 border=0 cellpadding=0 cellspacing=0>
+                                       <tr><td class='GoalDiv-t' height=24 colspan=6><b>` + sclassname + `</b><b class='goal-time'>` + tr.cells[3].innerHTML.replace("in.gif", "in2.gif") + `</b></td></tr>
+                                       <tr align=center class=line>
+                                           <td width='40'>`+ homeIcon + `</td>
+                                           <td width='180'><span class='teamname'>` + hometeam + `</span></td>
+                                           <td width='60' style='font-size: 16px;'>`+ scoreTxt + `</td>
+                                           <td width='180'><span class='teamname'>` + guestteam + `</span></td>
+                                           <td width='40'>`+ guestIcon + `</td>
+                                       </tr>
+                                    </table>`;
+                        matchNum = matchNum + 1
+                    }
+                }
+                //清空进球、红牌图标，复原红牌标识
+                homeIcon = guestIcon = "";
+                homeRedCard = guestRedCard = false;
+            }//scorechange
+        }
+        if (matchNum > 0) {
+            if (window.ActiveXObject)
+                ShowCHWindow(winStr, matchNum);
+            else
+                ShowCHWindow123(winStr, matchNum);
+        }
+    } catch (e) { }
+    //document.getElementById("notify").innerHTML=notify;
+}
+
+function ShowFlash(id, n) {
+    try {
+        if (soundCheck && parseInt(A[n][8]) >= -1) {
+            if (document.getElementById("tr1_" + id).style.display != "none") {
+                document.getElementById("audio_goal").play();
+            }
+        }
+    }
+    catch (e) { };
+    window.setTimeout("timecolors(" + id + "," + n + ")", 120000);
+}
+
+function CheckSound(n) {
+    soundid = n;
+    sound_init();
+    document.getElementById("audio_goal").play();
+}
+
+sound_init();
+function sound_init() {
+    //主队声音
+    var sound_arr = new Array();
+    sound_arr.push('<audio id="audio_goal" style="display: none">');
+    sound_arr.push('<source src="/sound/sound' + soundid + '.mp3" type="audio/mpeg" />');
+    sound_arr.push('<source src="/sound/sound' + soundid + '.ogg" type="audio/ogg" />');
+    sound_arr.push('</audio>');
+    _$("soundsGoal").innerHTML = sound_arr.join("");
+
+    //红牌声音
+    sound_arr = new Array();
+    sound_arr.push('<audio id="audio_red" style="display: none">');
+    sound_arr.push('<source src="/sound/red.mp3" type="audio/mpeg" />');
+    sound_arr.push('<source src="/sound/red.ogg" type="audio/ogg" />');
+    sound_arr.push('</audio>');
+    _$("soundsRed").innerHTML = sound_arr.join("");
+
+    _$("audio_goal").load();
+    _$("audio_red").load();
+
+
+    window.removeEventListener("touchstart", soundHandle, true);
+    window.addEventListener("touchstart", soundHandle, true);
+}
+
+function soundHandle() {
+    _$("audio_goal").load();
+    _$("audio_red").load();
+    window.removeEventListener("touchstart", soundHandle);
+}
+
+function timecolors(matchid, matchindex) {
+    try {
+        var tr = document.getElementById("tr1_" + matchid);
+        tr.cells[5].style.backgroundColor = "";
+        tr.cells[6].innerHTML = A[matchindex][9] + " - " + A[matchindex][10];
+        tr.cells[7].style.backgroundColor = "";
+    }
+    catch (e) { }
+}
+
+function clearNotify() {
+    document.getElementById("notify").innerHTML = "";
+}
+
+function ShowAllMatch() {
+    var i, j, inputs;
+    inputs = document.getElementById("myleague2").getElementsByTagName("input");
+    for (var i = 0; i < inputs.length; i++)
+        inputs[i].checked = true;
+
+    inputs = document.getElementById("table_live").getElementsByTagName("tr");
+    for (var i = 0; i < inputs.length; i++)
+        if (inputs[i].getAttribute("index") != null) {
+            inputs[i].style.display = "";
+        }
+
+    for (var i = 1; i <= matchcount; i++)
+        if (A[i][24] != "" && (Bf_simply_disp == false || B[A[i][1]][4] == 1)) document.getElementById("tr2_" + A[i][0]).style.display = "";
+
+    if (orderby == "league") {
+        for (var i = 1; i <= sclasscount; i++) {
+            if (Bf_simply_disp && B[i][4] == 0) continue;
+            if (document.getElementById("tr_" + i)) document.getElementById("tr_" + i).style.display = "";
+            if (document.getElementById("expand" + i)) document.getElementById("expand" + i).style.display = "none";
+            if (document.getElementById("collapse" + i)) document.getElementById("collapse" + i).style.display = "";
+        }
+    }
+    document.getElementById("hiddencount").innerHTML = "0";
+    hiddenID = "_";
+    writeCookie("Hidden_MatchID", hiddenID);
+}
+
+//dispaly by status
+function ShowMatchByMatchState(n) {
+    var i, j;
+    var hh = 0;
+    var trs = document.getElementById("table_live").getElementsByTagName("tr");
+    for (var i = 1; i < trs.length; i++) {
+        if (trs[i].getAttribute("index") != null) {
+            trs[i].style.display = "none";
+            trs[i + 1].style.display = "none";
+        }
+    }
+    for (var i = 1; i <= matchcount; i++) {
+        if (Bf_simply_disp && B[A[i][1]][4] == 0) continue;
+        if (n == 1 && parseInt(A[i][8]) > 0 || n == 2 && A[i][8] == "-1" || n == 3 && A[i][8] == "0" || n == 4 && A[i][20] == "True") {
+            document.getElementById("tr1_" + A[i][0]).style.display = "";
+            if (A[i][24] != "") document.getElementById("tr2_" + A[i][0]).style.display = "";
+        }
+        else
+            hh = hh + 1;
+    }
+    document.getElementById("hiddencount").innerHTML = hh;
+
+    if (orderby == "league") {
+        for (var i = 1; i <= sclasscount; i++) {
+            var show = false;
+            if (Bf_simply_disp && B[i][4] == 0) continue;
+            for (var j = 1; j <= matchcount; j++) {
+                if (A[j][1] != i) continue;
+                if (n == 1 && parseInt(A[j][8]) > 0 || n == 2 && A[j][8] == "-1" || n == 3 && A[j][8] == "0" || n == 4 && A[j][20] == "True") show = true;
+            }
+            if (show)
+                document.getElementById("tr_" + i).style.display = "";
+            else
+                document.getElementById("tr_" + i).style.display = "none";
+        }
+    }
+}
+
+
+function hidematch(i) {
+    document.getElementById("tr1_" + A[i][0]).style.display = "none";
+    document.getElementById("tr2_" + A[i][0]).style.display = "none";
+    document.getElementById("hiddencount").innerHTML = parseInt(document.getElementById("hiddencount").innerHTML) + 1;
+    if (hiddenID.indexOf("_" + A[i][0] + "_") == -1) hiddenID += A[i][0] + "_";
+    writeCookie("Hidden_MatchID", hiddenID);
+}
+
+function hideSelMatch() {
+    if (hiddenID == "_") return;
+    var hh = 0;
+    var id = hiddenID.split("_");
+    for (var i = 1; i < id.length - 1; i++) {
+        if (document.getElementById("tr1_" + id[i]) != null) {
+            document.getElementById("tr1_" + id[i]).style.display = "none";
+            document.getElementById("tr2_" + id[i]).style.display = "none";
+            hh++;
+        }
+    }
+    document.getElementById("hiddencount").innerHTML = hh;
+}
+
+
+function ClearAllMatch() {
+    var i, j, inputs;
+    inputs = document.getElementById("myleague2").getElementsByTagName("input");
+    for (var i = 0; i < inputs.length; i++)
+        inputs[i].checked = false;
+
+    inputs = document.getElementById("table_live").getElementsByTagName("tr");
+    for (var i = 0; i < inputs.length; i++)
+        if (inputs[i].getAttribute("index") != null) inputs[i].style.display = "none";
+
+    for (var i = 1; i <= matchcount; i++) {
+        if (A[i][30] != "" && (Bf_simply_disp == false || A[i][26] == 1)) document.getElementById("tr2_" + A[i][0]).style.display = "none";
+        if (hiddenID.indexOf("_" + A[i][0] + "_") == -1) hiddenID += A[i][0] + "_";
+    }
+
+    if (orderby == "league") {
+        for (var i = 1; i <= sclasscount; i++) {
+            if (Bf_simply_disp && B[i][4] == 0) continue;
+            document.getElementById("tr_" + i).style.display = "none";
+            document.getElementById("expand" + i).style.display = "";
+            document.getElementById("collapse" + i).style.display = "none";
+        }
+    }
+    document.getElementById("hiddencount").innerHTML = matchcount;
+    writeCookie("Hidden_MatchID", hiddenID);
+}
+
+function CheckLeague(i) {
+    var hh = parseInt(document.getElementById("hiddencount").innerHTML);
+    if (document.getElementById("myleague_" + i).checked) {
+        if (orderby == "league") document.getElementById("tr_" + i).style.display = "";
+        for (var j = 1; j <= matchcount; j++) {
+            if (A[j][1] == i) {
+                document.getElementById("tr1_" + A[j][0]).style.display = "";
+                if (A[j][24] != "") document.getElementById("tr2_" + A[j][0]).style.display = "";
+                if (hiddenID.indexOf("_" + A[j][0] + "_") != -1) {
+                    hiddenID = hiddenID.replace("_" + A[j][0] + "_", "_")
+                    hh--;
+                }
+            }
+        }
+    }
+    else {
+        if (orderby == "league") document.getElementById("tr_" + i).style.display = "none";
+        for (var j = 1; j <= matchcount; j++) {
+            if (A[j][1] == i) {
+                document.getElementById("tr1_" + A[j][0]).style.display = "none";
+                if (A[j][24] != "") document.getElementById("tr2_" + A[j][0]).style.display = "none";
+                if (hiddenID.indexOf("_" + A[j][0] + "_") == -1) {
+                    hiddenID += A[j][0] + "_";
+                    hh++;
+                }
+            }
+        }
+    }
+    document.getElementById("hiddencount").innerHTML = hh;
+    writeCookie("Hidden_MatchID", hiddenID);
+}
+
+function CloseLeague(i) {
+    document.getElementById("myleague_" + i).checked = false;
+    CheckLeague(i);
+}
+
+function HiddenLeague(i, b) {
+    document.getElementById("myleague_" + i).checked = b;
+    if (b) {
+        document.getElementById("expand" + i).style.display = "none";
+        document.getElementById("collapse" + i).style.display = "";
+    }
+    else {
+        document.getElementById("expand" + i).style.display = "";
+        document.getElementById("collapse" + i).style.display = "none";
+    }
+    CheckLeague(i);
+    document.getElementById("tr_" + i).style.display = "";
+}
+
+function MoveToBottom(m) {
+    try {
+        document.getElementById("tr1_" + m).parentElement.insertAdjacentElement("beforeEnd", document.getElementById("tr1_" + m));
+        document.getElementById("tr2_" + m).parentElement.insertAdjacentElement("beforeEnd", document.getElementById("tr2_" + m));
+    } catch (e) { }
+}
+
+
+//update running time
+function setMatchTime() {
+    for (var i = 1; i <= matchcount; i++) {
+        try {
+            //日期兼容格式()
+            var t2 = convertTime(A[i][7]);
+            if (A[i][8] == "1") {  //part 1					
+                goTime = Math.floor((new Date() - t2 - difftime) / 60000);
+                if (goTime > 45) goTime = "45+";
+                if (goTime < 1) goTime = "1";
+                document.getElementById("time_" + A[i][0]).innerHTML = goTime + "<img src='/images/in.gif' border=0>";
+            }
+            if (A[i][8] == "3") {  //part 2		
+                goTime = Math.floor((new Date() - t2 - difftime) / 60000) + 46;
+                if (goTime > 90) goTime = "90+";
+                if (goTime < 46) goTime = "46";
+                document.getElementById("time_" + A[i][0]).innerHTML = goTime + "<img src='/images/in.gif' border=0>";
+            }
+        } catch (e) { }
+    }
+    runtimeTimer = window.setTimeout("setMatchTime()", 30000);
+}
+
+function showdetail(n, event) {
+    if (A[n][8] == "0") return;
+    try {
+        if (Math.floor((new Date() - loadDetailFileTime) / 600) > 6) LoadDetailFile();
+        var R = new Array();
+        var html = "<table width=400 cellpadding=0 cellspacing=1 class='odds-table-bg'>";
+        html += "<tr><td height=20 colspan=5 class='hand-bg' align=center><font color=white><b>" + _locModel.T.T_TIL_GameEve + "</b></font></td></tr>";
+        html += "<tr class='jqSubTitle' align=center><td height=20 width=44%><font><b>" + A[n][4] + "</b></font></td><td width=12%><b>" + _locModel.T.T_Minutes + "</b></td><td  width=44%><font><b>" + A[n][5] + "</b></font></td></tr>";
+        for (var i = 0; i < rq.length; i++) {
+            R = rq[i].split('^');
+            if (R[0] != A[n][0]) continue;
+            if (R[1] == "1")
+                html += "<tr align=center><td align=left height=18 class='white-bg' style='padding: 0 5px'> <img style='margin:0px 2px;' src='/images/" + R[2] + ".gif'>" + R[4] + " </td><td width=12% class='gray-bg2'>" + R[3] + "'</td><td class='white-bg'></td></tr>";
+            else
+                html += "<tr align=center><td class='white-bg'></td><td width=12% class='gray-bg2''>" + R[3] + "'</td><td align=right height=18 class='white-bg' style='padding: 0 5px'>" + R[4] + " <img style='margin:0px 2px;' src='/images/" + R[2] + ".gif'> </td></tr>";
+        }
+        html += "</table>";
+        document.getElementById('winScore').style.left = (document.body.clientWidth / 2 - 175) + "px";
+        //document.getElementById('winScore').style.top = (document.documentElement.scrollTop + event.clientY+15)+"px";
+
+        var pos = getElementPos("sound");
+        var obj = document.getElementById('winScore');
+        var scrollTop = Math.max(document.body.scrollTop, document.documentElement.scrollTop);
+        if (scrollTop == 0) {
+            if (pos.y - event.clientY < 260)
+                obj.style.top = (event.clientY - obj.clientHeight) + "px";
+            else if (event.clientY - 240 <= 0) {
+                obj.style.top = event.clientY + "px";
+            }
+            else obj.style.top = (event.clientY - obj.clientHeight) + "px";
+        }
+        else {
+            if (event.clientY < obj.clientHeight)
+                obj.style.top = (scrollTop + event.clientY) + "px";
+            else
+                obj.style.top = (scrollTop + event.clientY - obj.clientHeight) + "px";
+        }
+        document.getElementById("winScore").innerHTML = html;
+        document.getElementById("winScore").style.display = "";
+    } catch (e) { }
+}
+
+function hiddendetail() {
+    document.getElementById("winScore").innerHTML = "";
+    document.getElementById("winScore").style.display = "none";
+}
+
+function check() {
+    if (oldUpdateTime == lastUpdateTime && oldUpdateTime != "") {
+        if (confirm("Due to procedural busyness or other network problems, you have been disconnected with the server more than 5 minutes, whether re-link to continue your watching score or not?")) window.location.reload();
+    }
+    oldUpdateTime = lastUpdateTime;
+    window.setTimeout("check()", 300000);
+}
+
+function setOrderby(a) {
+    orderby = a
+    writeCookie("orderby", orderby);
+    LoadLiveFile();
+}
+function ReplaceStyle(css) {
+    document.getElementById("cssLink").href = "style/" + css + ".css";
+    writeCookie("css", css);
+}
+function LoadLiveFile() {
+    var allDate = document.getElementById("allDate");
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    if (isResult) {
+        if (orderby == "league")
+            s.src = "/gf/data/finish/" + _bfTxtByLeague + "?" + Date.parse(new Date());
+        else
+            s.src = "/gf/data/finish/" + _bfTxtByTime + "?" + Date.parse(new Date());
+    } else {
+        if (orderby == "league")
+            s.src = "/gf/data/" + _bfTxtByLeague + "?" + Date.parse(new Date());
+        else
+            s.src = "/gf/data/" + _bfTxtByTime + "?" + Date.parse(new Date());
+    }
+    allDate.removeChild(allDate.firstChild);
+    allDate.appendChild(s, "script");
+    window.setTimeout("LoadLiveFile()", 3600 * 1000);
+}
+function LoadDetailFile() {
+    var detail = document.getElementById("span_detail");
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    s.src = "/gf/data/detail.js?" + Date.parse(new Date());
+
+    detail.removeChild(detail.firstChild);
+    detail.appendChild(s, "script");
+    loadDetailFileTime = new Date();
+}
+
+function LoadSbCornerFile() {
+    var detail = document.getElementById("span_sbCorner");
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    s.charset = "utf-8";
+    s.src = "/gf/data/sbCorner.js?" + Date.parse(new Date());
+    detail.removeChild(detail.firstChild);
+    detail.appendChild(s, "script");
+    loadSbCornerTime = new Date();
+
+
+}
+
+
+function changeFontSize(obj, size) {
+    for (var i = 1; i <= matchcount; i++) {
+        if (Bf_simply_disp == false || A[i][26] == 1) {
+            document.getElementById("team1_" + A[i][0]).style.fontSize = size + "px";
+            document.getElementById("team2_" + A[i][0]).style.fontSize = size + "px";
+        }
+    }
+}
+
+orderby = getCookie("orderby");
+if (orderby == null) orderby = "time";
+LoadLiveFile();
+
+window.setTimeout("LoadSbCornerFile()", 4000);
+window.setTimeout("getxml()", 2000);
+window.setTimeout("check()", 3000);
+
+function ToApp() {
+    window.open(_touchWebDomain);
+    //if (navigator.userAgent.toLowerCase().indexOf("android") != -1) {
+    //	window.open("/download/nowgoal.apk");
+    //}
+    //else if (navigator.userAgent.toLowerCase().indexOf("iphone") != -1 || navigator.userAgent.toLowerCase().indexOf("ipad") != -1 || navigator.userAgent.toLowerCase().indexOf("ipod") != -1) {
+    //	window.open("https://itunes.apple.com/us/app/nowgoal-livescore/id641037627?ls=1&mt=8");
+    //}
+    //else {
+    //	window.open("/app/");
+    //}
+}
+
+
+
+
+function hiddenSbCorner() {
+    document.getElementById("ifShowCorner").value = 0;
+    oldCorner = "";
+    showCornerCont = 0;
+    MM_showHideLayers('sbOddsCorner', '', 'hidden');
+}
+function showSbCornerDiv() {
+    document.getElementById("ifShowCorner").value = 1;
+    MM_showHideLayers('sbOddsCorner', '', 'show');
+}
+function showSBCorner(n, event) {
+    if (!_showCorner) return;
+
+    if (showCornerCont > 0) return;
+
+    var scheduleId = A[n][0];
+    var homeTeamID = A[n][2];
+    var guestTeamID = A[n][3];
+    var homeTeam = A[n][4];
+    var guestTeam = A[n][5];
+    var sclassName = B[A[n][1]][1];
+    var matchState = parseInt(A[n][8]);
+    var html = new Array();
+    if (Math.floor((new Date() - loadSbDetailTime) / 600) > 50) LoadSbCornerFile();
+    if (typeof (sCornerData) == "undefined" || typeof (sCornerData[scheduleId]) == "undefined")
+        return;
+    var strGoals = "";
+    var arrOdds = sCornerData[scheduleId].split('^');
+    var arrCornerLetGoal = arrOdds[0].split(',');
+    var arrCornerTotal = arrOdds[1].split(',');
+    var arrCornerCount = arrOdds[2].split(',');
+    var arrDetail = null;
+    if (typeof (arrOdds[3]) != "undefined")
+        arrDetail = arrOdds[3].split(';');
+    strGoals = scheduleId + "," + homeTeamID + "," + guestTeamID + "," + matchState + ",";
+    for (var j = 3; j < 6; j++) {
+        strGoals += (typeof (arrCornerLetGoal[j]) == "undefined" ? '' : arrCornerLetGoal[j]) + ","
+    }
+    for (var j = 3; j < 6; j++) {
+        strGoals += (typeof (arrCornerTotal[j]) == "undefined" ? '' : arrCornerTotal[j]) + ","
+    }
+    for (var j = 0; j < 4; j++) {
+        strGoals += (typeof (arrCornerCount[j]) == "undefined" ? '' : arrCornerCount[j]) + ","
+    }
+    if (arrDetail != null && arrDetail[0] != "") {
+        var arr = arrDetail[arrDetail.length - 1].split(',');
+        strGoals += arr[0] + ',' + arr[1];
+    }
+    else
+        strGoals += ',';
+    var beginHeight = 60;
+    var isShow = (typeof (arrCornerLetGoal[0]) != "undefined" && arrCornerLetGoal[0] != "") || (typeof (arrCornerTotal[0]) != "undefined" && arrCornerTotal[0] != "");
+
+    html.push('<table width="100%" border="0" cellpadding="0" cellspacing="1"  id="tab_CornerOdds" style="background-color:#cccccc;">');
+    html.push('<tr><td colspan=2><div class="jqTitle">Bet365 ' + _locModel.T.T_TIL_CornerKicks + '</div></td></tr>');
+    html.push('<tr class=jqSubTitle><td>' + homeTeam + '</td><td>' + guestTeam + '</td></tr>');
+    html.push('</table>');
+
+    //    html.push('<div class="jqTitle">角球数据</div>'); 
+
+    //    html.push('<div class="jqSubTitle' + (isShow ? "" : " bottomLine") + '"><span>' + homeTeam + '</span><span style="width:199px; border-left:solid 1px #cccccc;">' + guestTeam + '</span></div>');
+    if (A[n][27]) isShow = true;
+    var goalIsShow = (isShow ? "" : "none");
+    beginHeight += (isShow ? 66 : 0);
+
+    html.push('<div class="info" id="div_cornerOdds" style="display:' + goalIsShow + '" odds="' + strGoals + '">');
+
+    isShow = (A[n][29] == 1 && matchState != 0);
+    if (A[n][27]) isShow = true;
+    var cornerIsShow = (isShow ? "" : "none");
+    beginHeight += (isShow ? 44 : 0);
+    html.push('<div class="info" id="div_cornerDetail" style="display:' + cornerIsShow + '">');
+    html.push("<div class='jqTitle2'>" + _locModel.T.T_TIL_CornerDetail + "</div>");
+    html.push('<table id="tab_CornerDetail" width="100%" border="0" cellpadding="0" cellspacing="1"  style="margin-top:-1px;background-color:#cccccc;">');
+    html.push('<tr>');
+    html.push('<tr>');
+    html.push('<td width="165" class="white-bg">' + (typeof (arrCornerCount[0]) == "undefined" ? A[n][27] : arrCornerCount[0]) + '</td>');
+    html.push('<td  width="60" class="gray-bg2">' + _locModel.T.T_FullTime + '</td>');
+    html.push('<td class="white-bg">' + (typeof (arrCornerCount[1]) == "undefined" ? A[n][28] : arrCornerCount[1]) + '</td>');
+    html.push('</tr>');
+    html.push('<tr>');
+    html.push('<td class="white-bg">' + (typeof (arrCornerCount[2]) == "undefined" ? " " : arrCornerCount[2]) + '</td>');
+    html.push('<td class="gray-bg2">' + _locModel.T.T_HalfTime + '</td>');
+    html.push('<td class="white-bg">' + (typeof (arrCornerCount[3]) == "undefined" ? " " : arrCornerCount[3]) + '</td>');
+    html.push('</tr>');
+
+    html.push("</table></div>");
+    var obj = document.getElementById('sbOddsCorner');
+    var pos = getElementPos("sound");
+    //var contentHeight = (goalIsShow == "none" && cornerIsShow == "none" ? 0 : beginHeight + (arrDetail != null && arrDetail[0] != "" ? arrDetail.length * 18 : 0));
+    obj.style.left = (document.body.clientWidth / 2 - 220) + "px";
+    var scrollTop = Math.max(document.body.scrollTop, document.documentElement.scrollTop);
+    if (scrollTop == 0) {
+        if (pos.y - event.clientY < 260)
+            obj.style.top = (event.clientY - obj.clientHeight) + "px";
+        else if (event.clientY - 240 <= 0) {
+            obj.style.top = event.clientY + "px";
+        }
+        else obj.style.top = (event.clientY - obj.clientHeight) + "px";
+    }
+    else {
+        if (event.clientY < obj.clientHeight)
+            obj.style.top = (scrollTop + event.clientY) + "px";
+        else
+            obj.style.top = (scrollTop + event.clientY - obj.clientHeight) + "px";
+    }
+    obj.style.width = "400px";
+    if (goalIsShow == "none" && cornerIsShow == "none") {
+        obj.style.width = "180px";
+        html = [];
+        html.push("<table style='border:solid 1px #666; background-color:#FFFFFF;width:180px;line-height:28px;text-align:center;font-size:14px;'><tr><td><b>" + _locModel.T.T_PH_NoCornerData + "</b></td></tr></table>");
+        obj.style.left = (document.body.clientWidth / 2 + 20) + "px"
+    }
+    obj.innerHTML = html.join("");
+    document.getElementById("ifShowCorner").value = 1;
+    MM_showHideLayers('sbOddsCorner', '', 'show');
+    showCornerCont++;
+}
+
+
+// odds window
+function changeData(odds) {
+    if (typeof (odds) == "undefined" || odds == "")
+        return "";
+    var tmp = odds;
+    var arrd = odds.toString().split(".");
+    if (arrd.length > 1) {
+        if (arrd[1].length == 1)
+            tmp = tmp + "0";
+    }
+    else
+        tmp = tmp + ".00";
+    return tmp;
+}
+
+function getStrDiv(odds1, odds2) {
+    if (typeof (odds1) == "undefined" || odds1 + "" == "")
+        return "";
+    var retVal;
+    var tmp = changeData(odds1);
+    if (parseFloat(odds1) > parseFloat(odds2))
+        retVal = '<div class="up_red">' + tmp + '</div>';
+    else if (parseFloat(odds1) < parseFloat(odds2))
+        retVal = '<div class="down_green">' + tmp + '</div>';
+    else
+        retVal = tmp;
+    return retVal;
+}
+function getStrDiv2(goal1, goal2, t) {
+    if (typeof (goal1) == "undefined" || goal1 + "" == "")
+        return "";
+    var tmp = "", retVal;
+    if (t == 1) tmp = Goal2GoalCn(goal1);
+    else tmp = Goal2GoalCn(goal1);
+    if (parseFloat(goal1) != parseFloat(goal2))
+        retVal = '<div class="change_yellow">' + tmp + '</div>';
+    else
+        retVal = tmp;
+    return retVal;
+}
+
+function SelectMenu(menuId) {
+    $('#li_ShowAll').removeClass('on');
+    $('#li_FilterHot').removeClass('on');
+    //$('#li_MyGame').removeClass('on');
+    $('.filterLi').removeClass('on');
+    $('#' + menuId).addClass('on');
+    var selOption = 0;
+    if (menuId == 'li_FilterHot') selOption = 1;
+    else if (menuId == 'li_MyGame') selOption = 8;
+    selectMenu = selOption;
+    sessionStorage.setItem("SelectMenu", selOption);
+}
+
+//统计当前隐藏数
+function CountHidden() {
+    var show = 0;
+    var trs = document.getElementById("table_live").getElementsByTagName("tr");
+    for (var i = 1; i < trs.length; i++) {
+        if (trs[i].getAttribute("index") != null) {
+            if (trs[i].style.display != "none") show++;
+        }
+    }
+    document.getElementById("hiddencount").innerHTML = matchcount - show;
+}
+
+function changeOddsType(value) {
+    //顶部传进来
+    if (value == undefined) {
+        reloadOddsData();
+    } else if (_oddsType != value) {//自身页面
+        _oddsType = parseInt(value);
+        //writeCookie("Odds_Type", value);
+        SetOddType(value);
+        reloadOddsData();
+    }
+    if (typeof (bfOddsReload) != "undefined") bfOddsReload();
+}
+
+var _isOddsChanging = false;
+function reloadOddsData() {
+    var oddsFile = "/gf/data/odds/en/goal" + companyID + ".xml?" + Date.parse(new Date());
+    if (isResult) oddsFile = "/gf/data/finish/goal8.xml?" + Date.parse(new Date());
+    oddsHttp.open("get", oddsFile, false);
+    oddsHttp.send(null);
+
+    _isOddsChanging = true;
+    showodds(oddsHttp);
+    _isOddsChanging = false;
+}
+
+function Hashtable() {
+    this._hash = new Object();
+    this.add = function (key, value) {
+        if (typeof (key) != "undefined") {
+            this._hash[key] = typeof (value) == "undefined" ? null : value;
+            return true;
+        }
+        else
+            return false;
+    }
+    this.remove = function (key) { delete this._hash[key]; }
+    this.keys = function () {
+        var keys = new Array();
+        for (var key in this._hash) {
+            keys.push(key);
+        }
+        return keys;
+    }
+    this.count = function () { var i = 0; for (var k in this._hash) { i++; } return i; }
+    this.items = function (key) { return this._hash[key]; }
+    this.contains = function (key) {
+        return typeof (this._hash[key]) != "undefined";
+    }
+    this.clear = function () { for (var k in this._hash) { delete this._hash[k]; } }
+}
+
+function getsbxml() {
+    try {
+        var obj = document.getElementById("oddsChange"); //判断是否有显示SB详情赔率浮动窗口
+        if (obj.style.visibility == "hidden" || obj.innerHTML == "") {
+            window.setTimeout("getsbxml()", 5000);
+            return;
+        }
+        sbOddsChangeHttp.open("get", "/gf/data/ch_sbOdds.xml?" + Date.parse(new Date()), true);
+        sbOddsChangeHttp.onreadystatechange = sboddsrefresh;
+        sbOddsChangeHttp.send(null);
+    } catch (e) { }
+    window.setTimeout("getsbxml()", 5000);
+}
+
+var old = "", oldHalf = "";
+function clearSbdata() {
+    old = ""; oldHalf = "";
+}
+
+function sboddsrefresh() {
+    if (sbOddsChangeHttp.readyState != 4 || (sbOddsChangeHttp.status != 200 && sbOddsChangeHttp.status != 0)) return;
+    if (oldXML == sbOddsChangeHttp.responseText) return;
+    oldXML = sbOddsChangeHttp.responseText;
+    var arr, matchState = 0;
+    var goal, home, away;
+    //亚赔
+    if (sbOddsChangeHttp.responseText == null || sbOddsChangeHttp.responseText == "") return;
+    var obj = document.getElementById("oddsChange"); //判断是否有显示SB详情赔率浮动窗口
+    if (obj.style.visibility == "hidden" || obj.innerHTML == "") return;
+    obj = document.getElementById("ffOddsDetail"); //全场赔率表格
+    if (old == "")
+        old = obj.attributes["odds"].value.split(","); //matchid,state,goal,home,away,standard,homewin,guestwin,totalscore,home,away
+    var tr1 = obj.rows[1];
+    matchState = parseInt(old[1]);
+    var root = sbOddsChangeHttp.responseXML.documentElement.childNodes[0]; //让球
+    for (i = 0; i < root.childNodes.length; i++) {
+        arr = root.childNodes[i].childNodes[0].nodeValue.split(","); //matchid,goal,home,away,state
+        if (parseInt(old[0]) == parseInt(arr[0])) {
+            if (matchState == 0 && parseInt(arr[4]) > 0) return;
+            if (old[2] == arr[1] && old[3] == arr[2] && old[4] == arr[3]) break;
+            goal = arr[1];
+            home = arr[2];
+            away = arr[3];
+
+            //转地区
+            var pl = oTool.getPL(_oddsType, arr[2], arr[1], arr[3], true);
+            arr[2] = pl[0]; arr[1] = pl[1]; arr[3] = pl[2];
+            pl = oTool.getPL(_oddsType, old[3], old[2], old[4], true);
+            old[3] = pl[0]; old[2] = pl[1]; old[4] = pl[2];
+
+            for (var j = 2; j <= 3; j++) {
+                if (old[j + 1] != "")
+                    arr[j] = getChangeStrDiv(arr[j], old[j + 1]);
+            }
+            tr1.cells[1].innerHTML = arr[2];
+            tr1.cells[2].innerHTML = Goal2GoalCn(arr[1]);
+            tr1.cells[3].innerHTML = arr[3];
+            old[2] = goal;
+            old[3] = home;
+            old[4] = away;
+            old[0] = arr[0];
+            break;
+        }
+    }
+    root = sbOddsChangeHttp.responseXML.documentElement.childNodes[1]; //欧赔
+    var tr2 = obj.rows[2];
+    for (i = 0; i < root.childNodes.length; i++) {
+        arr = root.childNodes[i].childNodes[0].nodeValue.split(","); //matchid,homewin,standard,guestwin
+        if (parseInt(old[0]) == parseInt(arr[0])) {// && matchState == 0
+            if (old[6] == arr[1] && old[5] == arr[2] && old[7] == arr[3]) break;
+            goal = arr[2];
+            home = arr[1];
+            away = arr[3];
+
+            //转地区
+            var pl = oTool.getPL(_oddsType, arr[1], arr[2], arr[3], true);
+            arr[1] = pl[0]; arr[2] = pl[1]; arr[3] = pl[2];
+            pl = oTool.getPL(_oddsType, old[5], old[6], old[7], true);
+            old[5] = pl[0]; old[5] = pl[1]; old[5] = pl[2];
+
+            if (old[6] != "")
+                arr[1] = getChangeStrDiv(arr[1], old[6]);
+            if (old[7] != "")
+                arr[3] = getChangeStrDiv(arr[3], old[7]);
+            tr2.cells[1].innerHTML = arr[1];
+            tr2.cells[2].innerHTML = arr[2];
+            tr2.cells[3].innerHTML = arr[3];
+            old[5] = goal;
+            old[6] = home;
+            old[7] = away;
+            old[0] = arr[0];
+            break;
+        }
+    }
+    root = sbOddsChangeHttp.responseXML.documentElement.childNodes[2]; //大小
+    var tr3 = obj.rows[3];
+    for (i = 0; i < root.childNodes.length; i++) {
+        arr = root.childNodes[i].childNodes[0].nodeValue.split(","); //matchid,totalscore,home,away
+        if (parseInt(old[0]) == parseInt(arr[0])) {
+            if (old[8] == arr[1] && old[9] == arr[2] && old[10] == arr[3]) break;
+            goal = arr[1];
+            home = arr[2];
+            away = arr[3];
+
+            //转地区
+            var pl = oTool.getPL(_oddsType, arr[2], arr[1], arr[3]);
+            arr[2] = pl[0]; arr[1] = pl[1]; arr[3] = pl[2];
+            pl = oTool.getPL(_oddsType, old[9], old[8], old[10]);
+            old[9] = pl[0]; old[8] = pl[1]; old[10] = pl[2];
+
+            if (old[9] != "")
+                arr[2] = getChangeStrDiv(arr[2], old[9]);
+            if (old[10] != "")
+                arr[3] = getChangeStrDiv(arr[3], old[10]);
+            tr3.cells[1].innerHTML = arr[2];
+            tr3.cells[2].innerHTML = Goal2CnOU(arr[1]);
+            tr3.cells[3].innerHTML = arr[3];
+            old[8] = goal;
+            old[9] = home;
+            old[10] = away;
+            old[0] = arr[0];
+            break;
+        }
+    }
+    var obj2 = document.getElementById("fhOddsDetail"); //半场赔率表格
+    oldHalf = obj2.attributes["odds"].value.split(","); //matchid,goal,home,away,totalscore,home,away,homewin,standoff,guestwin
+    var tr4 = obj2.rows[1];
+    root = sbOddsChangeHttp.responseXML.documentElement.childNodes[3]; //半场让球
+    for (i = 0; i < root.childNodes.length; i++) {
+        arr = root.childNodes[i].childNodes[0].nodeValue.split(","); //matchid,goal,home,away
+        if (parseInt(old[0]) == parseInt(arr[0])) {
+            if (oldHalf[1] == arr[1] && oldHalf[2] == arr[2] && oldHalf[3] == arr[3]) break;
+            home = arr[2];
+            goal = arr[1];
+            away = arr[3];
+
+            //转地区
+            var pl = oTool.getPL(_oddsType, arr[1], arr[2], arr[3]);
+            arr[1] = pl[0]; arr[2] = pl[1]; arr[3] = pl[2];
+            pl = oTool.getPL(_oddsType, oldHalf[1], oldHalf[2], oldHalf[3]);
+            oldHalf[1] = pl[0]; oldHalf[2] = pl[1]; oldHalf[3] = pl[2];
+
+            if (oldHalf[2] != "")
+                arr[2] = getChangeStrDiv(arr[2], oldHalf[2]);
+            if (oldHalf[3] != "")
+                arr[3] = getChangeStrDiv(arr[3], oldHalf[3]);
+            tr4.cells[1].innerHTML = arr[2];
+            tr4.cells[2].innerHTML = Goal2GoalCn(arr[1]);
+            tr4.cells[3].innerHTML = arr[3];
+            oldHalf[2] = home;
+            oldHalf[1] = goal;
+            oldHalf[3] = away;
+            old[0] = arr[0];
+            break;
+        }
+    }
+    root = sbOddsChangeHttp.responseXML.documentElement.childNodes[4]; //半场大小
+    var tr5 = obj2.rows[3];
+    for (i = 0; i < root.childNodes.length; i++) {
+        arr = root.childNodes[i].childNodes[0].nodeValue.split(","); //matchid,totalscore,home,away
+        if (parseInt(old[0]) == parseInt(arr[0])) {
+            if (oldHalf[4] == arr[1] && oldHalf[5] == arr[2] && oldHalf[6] == arr[3]) break;
+            home = arr[2];
+            goal = arr[1];
+            away = arr[3];
+
+            //转地区
+            var pl = oTool.getPL(_oddsType, arr[1], arr[2], arr[3]);
+            arr[1] = pl[0]; arr[2] = pl[1]; arr[3] = pl[2];
+            pl = oTool.getPL(_oddsType, oldHalf[4], oldHalf[5], oldHalf[6]);
+            oldHalf[4] = pl[0]; oldHalf[5] = pl[1]; oldHalf[6] = pl[2];
+
+            if (oldHalf[5] != "")
+                arr[2] = getChangeStrDiv(arr[2], oldHalf[5]);
+            if (oldHalf[6] != "")
+                arr[3] = getChangeStrDiv(arr[3], oldHalf[6]);
+            tr5.cells[1].innerHTML = arr[2];
+            tr5.cells[2].innerHTML = Goal2CnOU(arr[1]);
+            tr5.cells[3].innerHTML = arr[3];
+            oldHalf[5] = home;
+            oldHalf[4] = goal;
+            oldHalf[6] = away;
+            old[0] = arr[0];
+            break;
+        }
+    }
+    root = sbOddsChangeHttp.responseXML.documentElement.childNodes[5]; //半场欧赔
+    var tr6 = obj2.rows[2];
+    for (i = 0; i < root.childNodes.length; i++) {
+        arr = root.childNodes[i].childNodes[0].nodeValue.split(","); //matchid,totalscore,home,away
+        if (parseInt(old[0]) == parseInt(arr[0])) {
+            if (oldHalf[7] == arr[1] && oldHalf[8] == arr[2] && oldHalf[9] == arr[3]) break;
+            home = arr[2];
+            goal = arr[1];
+            away = arr[3];
+
+            //转地区
+            var pl = oTool.getPL(_oddsType, arr[1], arr[2], arr[3], true);
+            arr[1] = pl[0]; arr[2] = pl[1]; arr[3] = pl[2];
+            pl = oTool.getPL(_oddsType, oldHalf[7], oldHalf[8], oldHalf[9], true);
+            oldHalf[7] = pl[0]; oldHalf[8] = pl[1]; oldHalf[9] = pl[2];
+
+            if (oldHalf[7] != "")
+                arr[2] = getChangeStrDiv(arr[2], oldHalf[7]);
+            if (oldHalf[8] != "")
+                arr[3] = getChangeStrDiv(arr[3], oldHalf[8]);
+            tr6.cells[1].innerHTML = arr[2];
+            tr6.cells[2].innerHTML = arr[1];
+            tr6.cells[3].innerHTML = arr[3];
+            oldHalf[8] = home;
+            oldHalf[7] = goal;
+            oldHalf[9] = away;
+            old[0] = arr[0];
+            break;
+        }
+    }
+}
+
+function restoreSbOddsColor() {
+    var obj = document.getElementById("oddsChange"); //判断是否有显示SB详情赔率浮动窗口
+    if (obj.style.visibility == "hidden") return;
+    obj = document.getElementById("ffOddsDetail");
+    for (var i = 1; i < obj.rows.length - 1; i++) {
+        tr.cells[1].innerHTML = tr.cells[1].innerHTML.toLowerCase().replace(/<span class=up>/g, "").replace(/<span class=down>/g, "").replace(/<\/span>/g, "");
+        tr.cells[2].innerHTML = tr.cells[2].innerHTML.toLowerCase().replace(/<span class=up>/g, "").replace(/<span class=down>/g, "").replace(/<\/span>/g, "");
+        tr.cells[3].innerHTML = tr.cells[3].innerHTML.toLowerCase().replace(/<span class=up>/g, "").replace(/<span class=down>/g, "").replace(/<\/span>/g, "");
+    }
+    obj = document.getElementById("fhOddsDetail");
+    for (var i = 1; i < obj.rows.length - 1; i++) {
+        tr.cells[1].innerHTML = tr.cells[1].innerHTML.toLowerCase().replace(/<span class=up>/g, "").replace(/<span class=down>/g, "").replace(/<\/span>/g, "");
+        tr.cells[2].innerHTML = tr.cells[2].innerHTML.toLowerCase().replace(/<span class=up>/g, "").replace(/<span class=down>/g, "").replace(/<\/span>/g, "");
+        tr.cells[3].innerHTML = tr.cells[3].innerHTML.toLowerCase().replace(/<span class=up>/g, "").replace(/<span class=down>/g, "").replace(/<\/span>/g, "");
+    }
+}
+
+function FilterEmpty(val) {
+    if (typeof (val) == "undefined" || val == "")
+        return "";
+    else return val;
+}
+
+function LoadSbDetailFile() {
+    var detail = document.getElementById("span_sbDetail");
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    s.charset = "utf-8";
+    s.src = "/gf/data/odds/en/sbOddsData.js?" + Date.parse(new Date());
+    detail.removeChild(detail.firstChild);
+    detail.appendChild(s, "script");
+    loadSbDetailTime = new Date();
+}
+
+function convertOddsByType(sOdds) {
+    //0:H,1:1X2,2:OU
+    //3:H,4:OU,5,1x2
+    var arrOdds = new Array();
+    var t = new Array();
+    var t1 = new Array(), t2 = new Array(), t3 = new Array();
+    for (var i = 0; i < sOdds.length; i++) {
+        t = sOdds[i].slice(0);
+        var isEu = false;
+        if (i == 1 || i == 5) {
+            isEu = true;
+        }
+
+        t1 = oTool.getPL(_oddsType, t[0], t[1], t[2], isEu);
+        t2 = oTool.getPL(_oddsType, t[3], t[4], t[5], isEu);
+        t3 = oTool.getPL(_oddsType, t[6], t[7], t[8], isEu);
+        t = [t1[0], t1[1], t1[2], t2[0], t2[1], t2[2], t3[0], t3[1], t3[2]];
+        arrOdds.push(t);
+    }
+
+    return arrOdds;
+}
+
+function showOddsChange(n, event) {
+    if (companyID != 3 && companyID != 31 && companyID != 8) return;
+    if (showCont > 0) return;
+    var width = 555;
+    var hasRunning = true;
+    var scheduleId = A[n][0];
+    var homeTeam = A[n][4];
+    var guestTeam = A[n][5];
+    var sclassName = B[A[n][1]][1];
+    var hOrder = A[n][17];
+    var gOrder = A[n][18];
+    var strScore = "VS";
+    var matchState = parseInt(A[n][8]);
+    if (matchState > 0 || matchState == -1) {
+        if (matchState == -1)
+            strScore = "<b><span class='red;'>" + A[n][9] + " - " + A[n][10] + "</span></b>";
+        else
+            strScore = "<b><span class='blue'>" + A[n][9] + " - " + A[n][10] + "</span></b>";
+    }
+    //  try{
+    //if (Math.floor((new Date() - loadSbDetailTime) / 600) > 6) LoadSbDetailFile();
+    if (Math.floor((new Date() - loadSbDetailTime) / 1000) > 3) InitRunOddsData();
+
+    if (typeof (sData[A[n][0]]) == "undefined")
+        return;
+    var sOdds = sData[A[n][0]];
+    var arrOdds = convertOddsByType(sOdds);
+
+    if (typeof (arrOdds[0][6]) == "undefined" || arrOdds[0][6] == "") {
+        width = 555;
+        hasRunning = false;
+    }
+    var html = new Array();
+    var strGoals;
+    var hTeam = escapeChar(skipHtmlTagBoth(A[n][4]));
+    var gTeam = escapeChar(skipHtmlTagBoth(A[n][5]));
+    var threeMixLink = getFb3in1Url(scheduleId, companyID, hTeam, gTeam);
+    var threeMixHalfLink = getFb3in1Url(scheduleId, companyID, hTeam, gTeam, true);
+    var reg = /[\u4E00-\u9FA5]/g;
+    html.push('<div class="closebtn" onclick=\'MM_showHideLayers("oddsChange","","hide")\'></div><table width="' + width + '" class=\"oddschanges m5\" cellpadding=0 cellspacing=0 border=0>');
+    html.push('<tr>');
+    if (B[A[n][1]][5] != "")
+        html.push('<td width="' + (hasRunning ? "14%" : "15%") + '" height="31" align=center class="white-bg2"><a href="' + _footballWebDomain + 'LeagueInfo/' + B[A[n][1]][0] + '" target="_blank" class="odd-sname">' + sclassName + '</a></td>');
+    else
+        html.push('<td width="' + (hasRunning ? "14%" : "15%") + '" height="31" align=center class="white-bg2"><a class="odd-sname">' + sclassName + '</a></td>')
+    html.push('<td width="' + (hasRunning ? "38" : "37") + '%"  class="white-bg2 odd-teamname" style="text-align:right;padding-right:10px;"><b>' + homeTeam + '</b></td>');
+    html.push('<td  id="ffScoreDetail" sid=' + scheduleId + ' width="11%" align=center class="white-bg2 odd-score">' + strScore + '</td>');
+    html.push('<td width="' + (hasRunning ? "38" : "37") + '%" class="white-bg2 odd-teamname" style="text-align:left;padding:0 20px 0 10px;"><b>' + guestTeam + '</b></td>');
+    html.push('</tr>');
+    html.push('</table>');
+    strGoals = scheduleId + "," + matchState + ",";
+    if (matchState > 0 || matchState == -1)//让,标准,大
+        strGoals += (typeof (sOdds[0][7]) == "undefined" ? '' : sOdds[0][7]) + "," + (typeof (sOdds[0][6]) == "undefined" ? '' : sOdds[0][6]) + "," + (typeof (sOdds[0][8]) == "undefined" ? '' : sOdds[0][8]) + "," + (typeof (sOdds[1][7]) == "undefined" ? '' : sOdds[1][7]) + "," + (typeof (sOdds[1][6]) == "undefined" ? '' : sOdds[1][6]) + "," + (typeof (sOdds[1][8]) == "undefined" ? '' : sOdds[1][8]) + "," + (typeof (sOdds[2][7]) == "undefined" ? '' : sOdds[2][7]) + "," + (typeof (sOdds[2][6]) == "undefined" ? '' : sOdds[2][6]) + "," + (typeof (sOdds[2][8]) == "undefined" ? '' : sOdds[2][8]);
+    else
+        strGoals += (typeof (sOdds[0][4]) == "undefined" ? '' : sOdds[0][4]) + "," + (typeof (sOdds[0][3]) == "undefined" ? '' : sOdds[0][3]) + "," + (typeof (sOdds[0][5]) == "undefined" ? '' : sOdds[0][5]) + "," + (typeof (sOdds[1][4]) == "undefined" ? '' : sOdds[1][4]) + "," + (typeof (sOdds[1][3]) == "undefined" ? '' : sOdds[1][3]) + "," + (typeof (sOdds[1][5]) == "undefined" ? '' : sOdds[1][5]) + "," + (typeof (sOdds[2][4]) == "undefined" ? '' : sOdds[2][4]) + "," + (typeof (sOdds[2][3]) == "undefined" ? '' : sOdds[2][3]) + "," + (typeof (sOdds[2][5]) == "undefined" ? '' : sOdds[2][5]);
+    html.push('<table id="ffOddsDetail" width="' + width + 'px" class=\"oddschanges\" cellpadding=0 cellspacing=1 border=0  style="margin-bottom:5px" odds="' + strGoals + '">');
+    html.push('<tr>');
+    html.push('<td width="' + (hasRunning ? "14%" : "15%") + '" class="odd-bg1">&nbsp;</td>');
+    if (hasRunning)
+        html.push('<td colspan="3" class="gray" align=center>' + _locModel.T.T_Runningball + ' (' + _locModel.T.T_FT + ')</td>');
+    html.push('<td colspan="3" class="oddschanges-bg1" align=center>' + _locModel.T.T_Odds + ' (' + _locModel.T.T_FT + ')</td>');
+    html.push('<td colspan="3" class="oddschanges-bg2" align=center>' + _locModel.T.T_FirstOdds + ' (' + _locModel.T.T_FT + ')</td>');
+    html.push('</tr>');
+    html.push('<td class="odd-bg1" style="padding:0 4px;" align=right><b class="f-left">' + _locModel.T.T_1x2 + '</b> <a href="' + threeMixLink + '" target="_blank"><span>' + _locModel.T.T_Trend + '</span></a></td>');
+    if (hasRunning) {
+        html.push('<td id="1x2_run1" class="gray" align=center>' + (typeof (arrOdds[1][6]) == "undefined" ? ' ' : changeData(arrOdds[1][6])) + '</td>');
+        html.push('<td id="1x2_run2" class="gray" align=center>' + (typeof (arrOdds[1][7]) == "undefined" ? ' ' : changeData(arrOdds[1][7])) + '</td>');
+        html.push('<td id="1x2_run3" class="gray" align=center>' + (typeof (arrOdds[1][8]) == "undefined" ? ' ' : changeData(arrOdds[1][8])) + '</td>');
+    }
+    html.push('<td id="1x2_live1" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[1][3], arrOdds[1][0]) + '</td>');
+    html.push('<td id="1x2_live2" class="oddschanges-bg1" align=center>' + (typeof (arrOdds[1][4]) == "undefined" ? ' ' : getStrDiv(arrOdds[1][4], arrOdds[1][1])) + '</td>');
+    html.push('<td id="1x2_live3" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[1][5], arrOdds[1][2]) + '</td>');
+    html.push('<td id="1x2_fist1" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[1][0]) == "undefined" ? ' ' : changeData(arrOdds[1][0])) + '</td>');
+    html.push('<td id="1x2_fist2" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[1][1]) == "undefined" ? ' ' : changeData(arrOdds[1][1])) + '</td>');
+    html.push('<td id="1x2_fist3" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[1][2]) == "undefined" ? ' ' : changeData(arrOdds[1][2])) + '</td>');
+    html.push('</tr>');
+    html.push('<tr>');
+    html.push('<td class="odd-bg1" style="padding:0 4px;" align=right><b class="f-left">' + _locModel.T.T_S_OU + '</b> <a href="' + threeMixLink + '" target="_blank"><span>' + _locModel.T.T_Trend + '</span></a></td>');
+    if (hasRunning) {
+        html.push('<td id="ou_run1" class="gray" align=center>' + (typeof (arrOdds[2][6]) == "undefined" ? ' ' : changeData(arrOdds[2][6])) + '</td>');
+        html.push('<td id="ou_run2" class="gray" align=center>' + (typeof (arrOdds[2][7]) == "undefined" ? ' ' : Goal2CnOU(arrOdds[2][7])) + '</td>');
+        html.push('<td id="ou_run3" class="gray" align=center>' + (typeof (arrOdds[2][8]) == "undefined" ? ' ' : changeData(arrOdds[2][8])) + '</td>');
+    }
+    html.push('<td id="ou_live1" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[2][3], arrOdds[2][0]) + '</td>');
+    html.push('<td id="ou_live2" class="oddschanges-bg1" align=center>' + (typeof (arrOdds[2][4]) == "undefined" ? ' ' : getStrDiv2(arrOdds[2][4], arrOdds[2][1], 2)) + '</td>');
+    html.push('<td id="ou_live3" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[2][5], arrOdds[2][2]) + '</td>');
+    html.push('<td id="ou_fist1" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[2][0]) == "undefined" ? ' ' : changeData(arrOdds[2][0])) + '</td>');
+    html.push('<td id="ou_fist2" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[2][1]) == "undefined" ? ' ' : Goal2CnOU(arrOdds[2][1])) + '</td>');
+    html.push('<td id="ou_fist3" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[2][2]) == "undefined" ? ' ' : changeData(arrOdds[2][2])) + '</td>');
+    html.push('</tr>');
+    html.push('<tr>');
+    html.push('<td class="odd-bg1" style="padding:0 4px;" align=right><b class="f-left">' + _locModel.T.T_S_HDP + '</b> <a href="' + threeMixLink + '" target="_blank"><span>' + _locModel.T.T_Trend + '</span></a></td>');
+
+    if (hasRunning) {
+        html.push('<td width="8%" id="ah_run1" class="gray" align=center>' + changeData(arrOdds[0][6]) + '</td>');
+        html.push('<td width="13%" id="ah_run2" class="gray" align=center>' + Goal2GoalCn(arrOdds[0][7]) + '</td>');
+        html.push('<td width="8%" id="ah_run3" class="gray" align=center>' + changeData(arrOdds[0][8]) + '</td>');
+    }
+    html.push('<td width="' + (hasRunning ? "8%" : "11%") + '" id="ah_live1" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[0][3], arrOdds[0][0]) + '</td>');
+    html.push('<td width="' + (hasRunning ? "13%" : "21%") + '" id="ah_live2" class="oddschanges-bg1" align=center>' + getStrDiv2(arrOdds[0][4], arrOdds[0][1], 1) + '</td>');
+    html.push('<td width="' + (hasRunning ? "8%" : "11%") + '" id="ah_live3" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[0][5], arrOdds[0][2]) + '</td>');
+    html.push('<td width="' + (hasRunning ? "8%" : "11%") + '" id="ah_first1" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[0][0]) == "undefined" ? ' ' : changeData(arrOdds[0][0])) + '</td>');
+    html.push('<td width="' + (hasRunning ? "13%" : "21%") + '" id="ah_first2" class="oddschanges-bg2" align=center>' + Goal2GoalCn(arrOdds[0][1]) + '</td>');
+    html.push('<td width="' + (hasRunning ? "8%" : "10%") + '" id="ah_first3" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[0][2]) == "undefined" ? ' ' : changeData(arrOdds[0][2])) + '</td>');
+    html.push('</tr>');
+    html.push('<tr>');
+    html.push('</table>');
+    if (matchState > 0 || matchState == -1)//让,大,标准
+        strGoals = (typeof (sOdds[3][7]) == "undefined" ? '' : sOdds[3][7]) + "," + (typeof (sOdds[3][6]) == "undefined" ? '' : sOdds[3][6]) + "," + (typeof (sOdds[3][8]) == "undefined" ? '' : sOdds[3][8]) + "," + (typeof (sOdds[4][7]) == "undefined" ? '' : sOdds[4][7]) + "," + (typeof (sOdds[4][6]) == "undefined" ? '' : sOdds[4][6]) + "," + (typeof (sOdds[4][8]) == "undefined" ? '' : sOdds[4][8]) + "," + (typeof (sOdds[5][7]) == "undefined" ? '' : sOdds[5][7]) + "," + (typeof (sOdds[5][6]) == "undefined" ? '' : sOdds[5][6]) + "," + (typeof (sOdds[5][8]) == "undefined" ? '' : sOdds[5][8]);
+    else
+        strGoals = (typeof (sOdds[3][4]) == "undefined" ? '' : sOdds[3][4]) + "," + (typeof (sOdds[3][3]) == "undefined" ? '' : sOdds[3][3]) + "," + (typeof (sOdds[3][5]) == "undefined" ? '' : sOdds[3][5]) + "," + (typeof (sOdds[4][4]) == "undefined" ? '' : sOdds[4][4]) + "," + (typeof (sOdds[4][3]) == "undefined" ? '' : sOdds[4][3]) + "," + (typeof (sOdds[4][5]) == "undefined" ? '' : sOdds[4][5]) + "," + (typeof (sOdds[5][4]) == "undefined" ? '' : sOdds[5][4]) + "," + (typeof (sOdds[5][3]) == "undefined" ? '' : sOdds[5][3]) + "," + (typeof (sOdds[5][5]) == "undefined" ? '' : sOdds[5][5]);
+
+    html.push('<table id="fhOddsDetail" width="' + width + 'px" class=\"oddschanges\" cellpadding=0 cellspacing=1 border=0 odds="' + strGoals + '">');
+    html.push(' <tr>');
+    html.push('<td width="' + (hasRunning ? "14%" : "15%") + '" class="odd-bg1">&nbsp;</td>');
+    if (hasRunning)
+        html.push('<td colspan="3" class="gray" align=center>' + _locModel.T.T_Runningball + ' (' + _locModel.T.T_HT + ')</td>');
+    html.push('<td colspan="3" class="oddschanges-bg1" align=center>' + _locModel.T.T_Odds + ' (' + _locModel.T.T_HT + ')</td>');
+    html.push('<td colspan="3" class="oddschanges-bg2" align=center>' + _locModel.T.T_FirstOdds + ' (' + _locModel.T.T_HT + ')</td>');
+    html.push('</tr>');
+    html.push(' <tr>');
+    html.push('<td class="odd-bg1" style="padding:0 4px;" align=right><b class="f-left">' + _locModel.T.T_1x2 + '</b> <a href="' + threeMixHalfLink + '" target="_blank"><span>' + _locModel.T.T_Trend + '</span></a></td>');
+
+    if (hasRunning) {
+        html.push('<td id="1x2_ht_run1" class="gray" align=center>' + (typeof (arrOdds[4][6]) == "undefined" ? ' ' : changeData(arrOdds[4][6])) + '</td>');
+        html.push('<td id="1x2_ht_run2" class="gray" align=center>' + (typeof (arrOdds[4][7]) == "undefined" ? ' ' : changeData(arrOdds[4][7])) + '</td>');
+        html.push('<td id="1x2_ht_run3" class="gray" align=center>' + (typeof (arrOdds[4][8]) == "undefined" ? ' ' : changeData(arrOdds[4][8])) + '</td>');
+    }
+    html.push('<td id="1x2_ht_live1" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[4][3], arrOdds[4][0]) + '</td>');
+    html.push('<td id="1x2_ht_live2" class="oddschanges-bg1" align=center>' + (typeof (arrOdds[4][4]) == "undefined" ? ' ' : getStrDiv(arrOdds[4][4], arrOdds[4][1])) + '</td>');
+    html.push('<td id="1x2_ht_live3" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[4][5], arrOdds[4][2]) + '</td>');
+    html.push('<td id="1x2_ht_first1" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[4][0]) == "undefined" || typeof (arrOdds[4][4]) == "undefined" ? ' ' : changeData(arrOdds[4][0])) + '</td>');
+    html.push('<td id="1x2_ht_first2" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[4][1]) == "undefined" || typeof (arrOdds[4][4]) == "undefined" ? ' ' : changeData(arrOdds[4][1])) + '</td>');
+    html.push('<td id="1x2_ht_first3" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[4][2]) == "undefined" || typeof (arrOdds[4][4]) == "undefined" ? ' ' : changeData(arrOdds[4][2])) + '</td>');
+    html.push(' </tr>');
+    html.push('<tr>');
+    html.push('<td class="odd-bg1" style="padding:0 4px;" align=right><b class="f-left">' + _locModel.T.T_S_OU + '</b> <a href="' + threeMixHalfLink + '" target="_blank"><span>' + _locModel.T.T_Trend + '</span></a></td>');
+
+    if (hasRunning) {
+        html.push('<td id="ou_ht_run1" class="gray" align=center>' + (typeof (arrOdds[5][6]) == "undefined" ? ' ' : changeData(arrOdds[5][6])) + '</td>');
+        html.push('<td id="ou_ht_run2" class="gray" align=center>' + (typeof (arrOdds[5][7]) == "undefined" ? ' ' : Goal2CnOU(arrOdds[5][7])) + '</td>');
+        html.push('<td id="ou_ht_run3" class="gray" align=center>' + (typeof (arrOdds[5][8]) == "undefined" ? ' ' : changeData(arrOdds[5][8])) + '</td>');
+    }
+    html.push('<td id="ou_ht_live1" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[5][3], arrOdds[5][0]) + '</td>');
+    html.push('<td id="ou_ht_live2" class="oddschanges-bg1" align=center>' + (typeof (arrOdds[5][4]) == "undefined" ? ' ' : getStrDiv2(arrOdds[5][4], arrOdds[5][1], 2)) + '</td>');
+    html.push('<td id="ou_ht_live3" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[5][5], arrOdds[5][2]) + '</td>');
+    html.push('<td id="ou_ht_first1" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[5][0]) == "undefined" || typeof (arrOdds[5][4]) == "undefined" ? ' ' : changeData(arrOdds[5][0])) + '</td>');
+    html.push('<td id="ou_ht_first2" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[5][1]) == "undefined" || typeof (arrOdds[5][4]) == "undefined" ? ' ' : Goal2CnOU(arrOdds[5][1])) + '</td>');
+    html.push('<td id="ou_ht_first3" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[5][2]) == "undefined" || typeof (arrOdds[5][4]) == "undefined" ? ' ' : changeData(arrOdds[5][2])) + '</td>');
+    html.push(' </tr>');
+    html.push('<tr>');
+    html.push('<td class="odd-bg1" style="padding:0 4px;" align=right><b class="f-left">' + _locModel.T.T_S_HDP + '</b> <a href="' + threeMixHalfLink + '" target="_blank"><span>' + _locModel.T.T_Trend + '</span></a></td>');
+
+    if (hasRunning) {
+        html.push('<td id="ah_ht_run1" width="8%" class="gray" align=center>' + (typeof (arrOdds[3][6]) == "undefined" ? ' ' : changeData(arrOdds[3][6])) + '</td>');
+        html.push('<td id="ah_ht_run2" width="13%" class="gray" align=center>' + Goal2GoalCn(arrOdds[3][7]) + '</td>');
+        html.push('<td id="ah_ht_run3" width="8%" class="gray" align=center>' + (typeof (arrOdds[3][6]) == "undefined" ? ' ' : changeData(arrOdds[3][8])) + '</td>');
+    }
+    html.push('<td id="ah_ht_live1" width="' + (hasRunning ? "8%" : "11%") + '" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[3][3], arrOdds[3][0]) + '</td>');
+    html.push('<td id="ah_ht_live2" width="' + (hasRunning ? "13%" : "21%") + '" class="oddschanges-bg1" align=center>' + getStrDiv2(arrOdds[3][4], arrOdds[3][1], 1) + '</td>');
+    html.push('<td id="ah_ht_live3" width="' + (hasRunning ? "8%" : "11%") + '" class="oddschanges-bg1" align=center>' + getStrDiv(arrOdds[3][5], arrOdds[3][2]) + '</td>');
+    html.push('<td id="ah_ht_first1" width="' + (hasRunning ? "8%" : "11%") + '" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[3][0]) == "undefined" || typeof (arrOdds[3][4]) == "undefined" ? ' ' : changeData(arrOdds[3][0])) + '</td>');
+    html.push('<td id="ah_ht_first2" width="' + (hasRunning ? "13%" : "21%") + '" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[3][1]) == "undefined" || typeof (arrOdds[3][4]) == "undefined" ? ' ' : Goal2GoalCn(arrOdds[3][1])) + '</td>');
+    html.push('<td id="ah_ht_first3" width="' + (hasRunning ? "8%" : "10%") + '" class="oddschanges-bg2" align=center>' + (typeof (arrOdds[3][2]) == "undefined" || typeof (arrOdds[3][4]) == "undefined" ? ' ' : changeData(arrOdds[3][2])) + '</td>');
+    html.push('</tr>');
+    html.push('</table>');
+
+    var obj = document.getElementById('oddsChange');
+    var postTh = getElementPos("oddsHead");
+    obj.style.left = (postTh.x - 565) + "px";
+    //if (hasRunning)
+    //    obj.style.left = (document.body.clientWidth / 2 - 306) + "px";
+    //else
+    //    obj.style.left = (document.body.clientWidth / 2 - 228) + "px";
+
+    //document.getElementById('oddsChange').style.top = (getTopHeight() + event.clientY + 15) + "px";
+    var pos = getElementPos("sound");
+    var scrollTop = Math.max(document.body.scrollTop, document.documentElement.scrollTop);
+    if (scrollTop == 0) {
+        if (pos.y - event.clientY < 260)
+            obj.style.top = (event.clientY - obj.clientHeight) + "px";
+        else if (event.clientY - 240 <= 0) {
+            obj.style.top = event.clientY + "px";
+        }
+        else obj.style.top = (event.clientY - obj.clientHeight) + "px";
+    }
+    else {
+        if (event.clientY < obj.clientHeight)
+            obj.style.top = (scrollTop + event.clientY) + "px";
+        else
+            obj.style.top = (scrollTop + event.clientY - obj.clientHeight) + "px";
+    }
+
+    document.getElementById("oddsChange").innerHTML = html.join("");
+    MM_showHideLayers('oddsChange', '', 'show');
+    showCont++;
+    //  }catch(e){}
+}
+
+//初始化赔率弹窗数据
+function InitRunOddsData() {
+    sData = new Object();
+    //目前只有三家公司有数据
+    if (companyID != 3 && companyID != 8 && companyID != 31) return;
+    sbOddsDetailHttp.open("get", "/gf/data/odds/en/runOddsData_" + companyID + ".txt?" + Date.parse(new Date()), false);
+    sbOddsDetailHttp.send(null);
+    var data = sbOddsDetailHttp.responseText;
+    if (data == "") return;
+    var dataArr = data.split("$");
+    if (dataArr.length > 0) {
+        for (var i = 0; i < dataArr.length; i++) {
+            SetRunOddsObj(dataArr[i]);
+        }
+    }
+    loadSbDetailTime = new Date();
+}
+
+function SetRunOddsObj(data) {
+    var arr = data.split('!');
+    var scheduleId = arr[0];
+    var oddsList = new Array();
+    for (var i = 1; i <= arr.length; i++) {
+        if (arr[i] != "" && arr[i] != undefined) {
+            oddsList.push(arr[i].split(","));
+        }
+    }
+    sData[scheduleId] = oddsList;
+}
+
+function hideOddsDetail() {
+    document.getElementById("ifShow").value = 0;
+    clearSbdata();
+    showCont = 0;
+    MM_showHideLayers('oddsChange', '', 'hidden');
+}
+
+if (Bf_simply_disp) {
+    document.getElementById("ShowAllSel").getElementsByTagName("option")[1].selected = true;
+}

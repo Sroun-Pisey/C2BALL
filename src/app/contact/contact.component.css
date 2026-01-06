@@ -1,0 +1,41 @@
+.promotions
+{
+    color: aliceblue;
+    font-size: px;
+    font-family: khmer os Battambang;
+    background-color: rgba(24, 23, 23, 0.993);
+    padding: 20px;
+    top: 100px;
+    width: 100%;
+    margin-left: 0px;
+}
+.gameList
+{
+   background-color: rgb(29, 14, 14);
+   width: auto;
+   height: 115px;
+   margin-top: -47px;
+}
+.footer
+{
+   background-color: rgb(46, 13, 13);
+   color: aliceblue;
+   font-size: 15px;
+   font-family: khmer os Battambang;
+   border-bottom: 1px solid yellow;
+   border-top: 1px solid yellow;
+
+
+}
+.copyRight
+{
+   background-color: rgb(41, 15, 15);
+   height: 50px;
+   text-align: center;
+   color: rgba(255, 136, 0, 0.952);
+}
+.cop{
+   text-align: center;
+   margin: 10px;
+   font-size: 20px;
+}

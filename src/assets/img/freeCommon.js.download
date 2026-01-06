@@ -1,0 +1,141 @@
+﻿function SwithcDarkFree() {
+    if (document.getElementById("DarkModeCheck").checked) {
+        dark_mode = 1;
+        WriteSession("dark_mode", 1);
+    }
+    else {
+        dark_mode = 0;
+        WriteSession("dark_mode", 0);
+    }
+    LoadDark();
+}
+
+function SyncDarkCheckFree() {
+    var dark = getCookie("dark_mode");
+    if (dark == null) dark = dark_mode;
+    if (dark == 1) {
+        if (document.getElementById("DarkModeCheck")) document.getElementById("DarkModeCheck").checked = true;
+    }
+    if (document.getElementById("DarkModeCheck")) document.getElementById("DarkModeCheck").style.display = "";
+}
+
+SyncDarkCheckFree();
+
+function openFbAnalysis(scheduleId, homeName, guestName) {
+    if (window.location.host.indexOf('free') != -1) {
+        window.open(_mainWebDomain.substr(0,_mainWebDomain.length-1) + getFbAnalysisUrl(scheduleId, homeName, guestName));
+    } else {
+        window.open(getFbAnalysisUrl(scheduleId, homeName, guestName));
+    }
+}
+
+function opentFbOddsComp(scheduleId, homeName, guestName) {
+    if (window.location.host.indexOf('free') != -1) {
+        window.open(_mainWebDomain.substr(0,_mainWebDomain.length-1) + getFbOddsCompUrl(scheduleId, homeName, guestName));
+    } else {
+        window.open(getFbOddsCompUrl(scheduleId, homeName, guestName));
+    }
+}
+
+function openFbDetail(scheduleId, homeName, guestName) {
+    if (window.location.host.indexOf('free') != -1) {
+        window.open(_mainWebDomain.substr(0,_mainWebDomain.length-1) + getFbDetailUrl(scheduleId, homeName, guestName));
+    } else {
+        window.open(getFbDetailUrl(scheduleId, homeName, guestName));
+    }
+}
+
+function openFb3in1(scheduleId, companyId, homeName, guestName, isHalf) {
+    if (window.location.host.indexOf('free') != -1) {
+        window.open(_mainWebDomain.substr(0,_mainWebDomain.length-1) + getFb3in1Url(scheduleId, companyId, homeName, guestName));
+    } else {
+        window.open(getFb3in1Url(scheduleId, companyId, homeName, guestName));
+    }
+}
+
+function openBkAnalysis(scheduleId, homeName, guestName) {
+    if (window.location.host.indexOf('free') != -1) {
+        window.open(_mainWebDomain.substr(0,_mainWebDomain.length-1) + getBkAnalysisUrl(scheduleId, homeName, guestName));
+    } else {
+        window.open(getBkAnalysisUrl(scheduleId, homeName, guestName));
+    }
+}
+
+function openBkOdds(scheduleId, homeName, guestName) {
+    if (window.location.host.indexOf('free') != -1) {
+        window.open(_mainWebDomain.substr(0,_mainWebDomain.length-1) + getBkOddsUrl(scheduleId, homeName, guestName));
+    } else {
+        window.open(getBkOddsUrl(scheduleId, homeName, guestName));
+    }
+}
+
+function openBkStatis(scheduleId, homeName, guestName) {
+    if (window.location.host.indexOf('free') != -1) {
+        window.open(_mainWebDomain.substr(0,_mainWebDomain.length-1) + getBkStatisUrl(scheduleId, homeName, guestName));
+    } else {
+        window.open(getBkStatisUrl(scheduleId, homeName, guestName));
+    }
+}
+
+$(document).ready(function () {
+    specialHide();
+});
+function specialHide() {
+    var mode = getQueryVariable("mode");
+    if (mode == null || mode == '') {
+        mode = sessionStorage.getItem("HideMode");
+    }
+    if (mode != null && mode == "hide") {
+        $(".needHide").hide();
+        sessionStorage.setItem("HideMode", mode);
+    } else if (mode == "deephide") {
+        $(".needHide").hide();
+        $(".deepHide").hide();
+        sessionStorage.setItem("HideMode", mode);
+    }
+    else if (mode == "show") {
+        $(".needHide").show();
+        $(".deepHide").show();
+        sessionStorage.setItem("HideMode", mode);
+    }
+}
+
+var _leaSortting = false;
+function initSortLea() {
+    if (document.getElementById("cbbSortLea") && document.getElementById("cbbSortLea").checked) {
+        _leaSortting = true;
+        MakeSclassWithSorting();
+        HideByState(1);
+        SyncLeaSorting(0);
+    }
+}
+
+//sort leagues list
+function SortList(elem, sortBy) {
+    if (elem.checked) {
+        _leaSortting = true;
+        if (sortBy == 1) MakeCountryWithSorting();
+        else MakeSclassWithSorting();
+    }
+    else {
+        _leaSortting = false;
+        if (sortBy == 1) MakeCountry();
+        else MakeSclass();
+    }
+    if (sortBy == 1) HideByState(2);
+    else HideByState(1);
+    SyncLeaSorting(sortBy);
+}
+
+//无完场赛事隐藏Result分隔栏
+function hideResultTr() {
+    if (orderby == "league" || $("#resultSplit").length == 0) return;
+    var ifShow = false;
+    for (var i = 0; i < finishMatchList.length; i++) {
+        if ($("#tr1_" + finishMatchList[i])[0].style.display != "none" && ((myGamesID.indexOf(finishMatchList[i]) == -1 && isFavTop) || !isFavTop)) {
+            ifShow = true;
+            break;
+        }
+    }
+    $("#resultSplit")[0].style.display = !ifShow ? "none" : "";
+}

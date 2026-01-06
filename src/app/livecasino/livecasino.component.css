@@ -1,0 +1,39 @@
+.promotions
+{
+    background-color: black;
+}
+.gameList
+{
+   background-color: rgb(29, 14, 14);
+   width: auto;
+   height: 115px;
+   margin-top: 0px;
+}
+.footer
+{
+   background-color: rgb(46, 13, 13);
+   color: aliceblue;
+   font-size: 15px;
+   font-family: khmer os Battambang;
+   border-bottom: 1px solid yellow;
+   border-top: 1px solid yellow;
+}
+
+.cop{
+   text-align: center;
+   margin: 10px;
+   font-size: 20px;
+}
+
+.promo-img {
+  width: 100%;
+  border-radius: 8px; /* optional */
+  transition: transform 0.3s ease, filter 0.3s ease;
+  cursor: pointer;
+}
+
+.promo-img:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+

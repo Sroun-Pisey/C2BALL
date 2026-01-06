@@ -1,0 +1,481 @@
+@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@100&display=swap');
+.container-fluid{
+    overflow: hidden;
+}
+body{
+    background: url(../images/bg.jpg) repeat;
+    background-size: 100%;
+    font-family: 'Battambang', cursive;
+}
+.deskTopMenu{
+    background: linear-gradient(0deg, rgba(9,21,35,1) 0%, rgba(181,0,0,1) 100%);
+    border-top: 1px #DF9F28 solid;
+    border-bottom: 1px #DF9F28 solid;
+}
+.deskTopMenu ul{
+    list-style: none;
+    padding-top: 5px;
+    padding-bottom: 10px;
+    padding-left: 0;
+}
+.deskTopMenu ul li{
+    float: left;
+}
+.deskTopMenu ul li a{
+    text-decoration: none;
+    color: #FDE08D;
+    padding-left: 30px;
+    padding-right: 30px;
+    font-family: 'Battambang', cursive;
+}
+.deskTopMenu ul li a:hover{
+    
+    color:#000;
+    background-color: #FDE08D;
+}
+.runningText{
+    background-color:#333333;
+    border-radius: 10px;
+    color: #FDE08D;
+    padding-top: 3px;
+    width: 100%;
+    margin-left: 0;
+    border: 1px #5f0202 solid;
+}
+.runningText2{
+    background-color:black;
+    border-radius: 10px;
+    color: #fff;
+    padding-top: 2px;
+    margin-top: 20px;
+    width: 100%;
+    border: 1px #DF9F28 solid;
+}
+.headerContact{
+    margin-left: 40px;
+    padding-top: 10px;
+    color: #fff;
+}
+.headerContact a{
+    text-decoration: none;
+    color: #fff;
+}
+.menu{
+
+}
+.menu ul{
+    list-style-type: none;
+    padding-top: 5px;
+    margin-top: 20px;
+}
+.menu ul li{
+    float: left;
+}
+.menu ul li a{
+    color:#000;
+    text-decoration: none;
+    background-color: #FFCC00;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 10px;
+    padding-top: 10px;
+    margin-left: 2px;
+    margin-right: 2px;
+    border-radius: 10px;
+    font-family: 'Battambang', cursive;
+    font-size: larger;
+}
+.menu ul li a:hover{
+    background-color: #FF0000;
+    color: #fff;
+}
+.mMenu{
+
+}
+.mMenu a{
+    color: #ffbf05;
+    text-align: center;
+    text-decoration: none;
+}
+  /*jssor slider loading skin double-tail-spin css*/
+  .jssorl-004-double-tail-spin img {
+    animation-name: jssorl-004-double-tail-spin;
+    animation-duration: 1.6s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+}
+
+@keyframes jssorl-004-double-tail-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/*jssor slider bullet skin 071 css*/
+.jssorb071 .i {position:absolute;color:#fff;font-family:"Helvetica neue",Helvetica,Arial,sans-serif;text-align:center;cursor:pointer;z-index:0;}
+.jssorb071 .i .b {fill:#000;opacity:.2;}
+.jssorb071 .i:hover {opacity:.7;}
+.jssorb071 .iav {color:#000;}
+.jssorb071 .iav .b {fill:#fff;opacity:1;}
+.jssorb071 .i.idn {opacity:.3;}
+
+/*jssor slider arrow skin 104 css*/
+.jssora104 {display:block;position:absolute;cursor:pointer;}
+.jssora104 .c {fill:#000;opacity:.8;}
+.jssora104 .a {fill:#ddd;opacity:.8;}
+.jssora104:hover .c {opacity:.6;}
+.jssora104:hover .a {opacity:1;}
+.jssora104.jssora104dn .c {opacity:.3;}
+.jssora104.jssora104dn .a {opacity:1;}
+.jssora104.jssora104ds {opacity:.3;pointer-events:none;}
+
+
+
+.gameType{
+    border: 2px #FFCC00 solid;
+    position: relative;
+    overflow: hidden;
+}
+.gameType img{
+    transition: all 0.5s ease-in-out;
+}
+.gameType:hover img{
+    transform: scale(1.1);
+}
+.gameName{
+    text-align: center;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background: rgb(248,231,175);
+    background: radial-gradient(circle, rgba(245,228,172,1) 0%, rgba(107,83,2,1) 79%, rgba(56,53,38,1) 100%);
+    font-size: larger;
+    color: #000;
+}
+
+.agentType{
+    border: 2px #FFCC00 solid;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.agentType img{
+    transition: all 0.5s ease-in-out;
+}
+.agentType:hover img{
+    transform: scale(1.1);
+}
+.agentName{
+    text-align: center;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background: rgb(248,231,175);
+    background: radial-gradient(circle, rgba(245,228,172,1) 0%, rgba(107,83,2,1) 79%, rgba(56,53,38,1) 100%);
+    font-size: larger;
+}
+.casinoGame{
+    color: rgb(0, 0, 0);
+    font-size: large;
+}
+.casinoGameName{
+    color: #000000;
+    font-weight: bold;
+}
+.gameLogo{
+    background: #FDE08D;
+  	background: -webkit-linear-gradient(top, #8f6B29, #FDE08D, #DF9F28);
+	background: linear-gradient(top, #8f6B29, #FDE08D, #DF9F28);
+}
+.arrow_box {
+	position: relative;
+	background: #FDE08D;
+  	background: -webkit-linear-gradient(top, #8f6B29, #FDE08D, #DF9F28);
+	background: linear-gradient(top, #8f6B29, #FDE08D, #DF9F28);
+	border: 4px solid #FFCC00;
+}
+.arrow_box:after, .arrow_box:before {
+	left: 100%;
+	top: 50%;
+	border: solid transparent;
+	content: "";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+}
+
+.arrow_box:after {
+	border-color: rgba(213, 11, 11, 0);
+	background: #FDE08D;
+  	background: -webkit-linear-gradient(top, #8f6B29, #FDE08D, #DF9F28);
+	background: linear-gradient(top, #8f6B29, #FDE08D, #DF9F28);
+	border-width: 30px;
+	margin-top: -30px;
+}
+.arrow_box:before {
+	border-color: rgba(255, 204, 0, 0);
+	border-left-color: #FFCC00;
+	border-width: 36px;
+	margin-top: -36px;
+}
+.casinoGameDescription{
+    padding-left: 50px;
+    background: rgb(248,231,175);
+    background: radial-gradient(circle, rgba(245,228,172,1) 0%, rgba(107,83,2,1) 79%, rgba(56,53,38,1) 100%);
+    border:#8f6B29 2px solid;
+}
+
+.floatLeft{
+    transition: all 0.5s ease-in-out;
+    position: fixed;
+    z-index: 9999999999;
+    left: 0;
+    top: 35%;
+    margin-left: -150px;
+}
+.floatLeft:hover{
+   margin-left: 0px;
+}
+.floatRight{
+    transition: all 0.5s ease-in-out;
+    position: fixed;
+    z-index: 9999999999;
+    right: 0;
+    top: 35%;
+    margin-right: -150px;
+}
+.floatRight:hover{
+   margin-right: 0px;
+}
+
+
+.gameBox{
+    position: relative;
+    margin-top: 20px;
+}
+.gameNameLayout{
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background: #000000;
+    padding: 10px;
+    width: 100%;
+
+}
+.casinoName{
+    float: left;
+}
+.casinoName a{
+    color: #ffffff;
+}
+.casinoName a:hover{
+    color: #0a58ca;
+}
+.joinNow{
+    float: right;
+}
+.joinNow a{
+    color: #ffffff;
+    font-family: 'Khmer', cursive;
+    font-size: small;
+}
+.joinNow a:hover{
+    color: #ff0010;
+}
+.gameBox img:hover{
+    filter: brightness(150%);
+}
+.slotGameBox{
+    background: rgba(0,0,0,0.8);
+}
+.slotGame{
+    font-size: x-small;
+    text-align: center;
+    float: none;
+}
+.gameSlots img{
+    cursor: pointer;
+}
+.allGameName{
+    font-weight: bold;
+    font-size: larger;
+    color: #ffab23;
+    cursor: pointer;
+    font-family: 'Battambang', cursive;
+}
+.moreGame {
+    box-shadow:inset 0px 1px 0px 0px #fff6af;
+	background:linear-gradient(to bottom, #ffec64 5%, #ffab23 100%);
+	background-color:#ffec64;
+	border-radius:6px;
+	border:1px solid #ffaa22;
+	display:inline-block;
+	cursor:pointer;
+	color:#333333;
+	font-family: 'Battambang', cursive;
+	font-size:15px;
+	font-weight:bold;
+	padding:6px 24px;
+	text-decoration:none;
+	text-shadow:0px 1px 0px #ffee66;
+}
+.moreGame:hover {
+    background:linear-gradient(to bottom, #ffab23 5%, #ffec64 100%);
+	background-color:#ffab23;
+}
+.moreGame:active {
+    position:relative;
+    top:1px;
+}
+.gameList{
+    background-color: rgb(17, 1, 1);
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+.footerHeader{
+    color: #DF9F28;
+    font-family: 'Battambang', cursive;
+    font-size: larger;
+}
+.footerMenu{
+   padding-top: 50px;
+   background-color: #000000;
+   border-top: 2px #DF9F28 solid;
+}
+.footerMenu ul li{
+    color: #fff;
+}
+.copyRight{
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    color: #DF9F28;
+    background-color: #333333;
+}
+.homePgaeHeading{
+    color: #fff;
+}
+.homePgaeDescription{
+    color: #ddd;
+    padding: 30px;
+    text-align: justify;
+    padding-left: 0;
+}
+
+.promotions{
+    color: #ffffff;
+    font-family: 'Battambang', cursive;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+.promotionHeader{
+    font-size: x-large;
+    color: #DF9F28;
+}
+.promotions .card-body{
+    background-color: rgba(0, 0, 0, 0.5); 
+}
+.promotions span{
+    color:#DF9F28;
+    font-weight: bolder;
+}
+.promotions ul{
+    list-style-image: url('../images/tick.png');
+}
+.sidebarLayout{
+    border: 1px #fde9a0 solid;
+    background: #1f160d;
+}
+.sidebarHeader{
+    background: rgb(248,231,175);
+    background: radial-gradient(circle, rgba(245,228,172,1) 0%, rgba(107,83,2,1) 79%, rgba(56,53,38,1) 100%);
+    padding-bottom: 10px;
+    padding-top: 10px;
+    text-align: center;
+    color: #ff0000;
+    font-family: 'Battambang', cursive;
+    font-weight: bold;
+    font-size: 20px;
+}
+.sidebarLayout ul{
+    list-style: none;
+    padding-left: 10px;
+    padding-top: 10px;
+    color: #ffffff;
+}
+.sidebarLayout ul li{
+    padding-top: 3px;
+    padding-bottom: 3px;
+    font-family: 'Battambang', cursive;
+}
+.sidebarLayout ul li span{
+    color: #fde9a0;
+    font-weight: bold;
+}
+
+.headerLayout{
+    background: rgba(0,0,0,0.7);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 2px 2px 10px 1px rgba(255,0,0,0.75);
+    -webkit-box-shadow: 2px 2px 10px 1px rgba(255,0,0,0.75);
+    -moz-box-shadow: 2px 2px 10px 1px rgba(255,0,0,0.75);
+
+}
+
+.animateImg{
+    animation: myAnim 2s ease 0s infinite reverse both;
+}
+@keyframes myAnim {
+	0%,
+	100% {
+		transform: rotate(0deg);
+		transform-origin: 50% 0;
+	}
+
+	10% {
+		transform: rotate(2deg);
+	}
+
+	20%,
+	40%,
+	60% {
+		transform: rotate(-4deg);
+	}
+
+	30%,
+	50%,
+	70% {
+		transform: rotate(4deg);
+	}
+
+	80% {
+		transform: rotate(-2deg);
+	}
+
+	90% {
+		transform: rotate(2deg);
+	}
+}
+
+
+.footer{
+    padding-top: 20px;
+    padding-bottom: 20px;
+    color: #fff;
+    background-color: rgb(39, 2, 2);
+    border-top: 1px #DF9F28 solid;
+    border-bottom: 1px #DF9F28 solid;
+}
+.copyright{
+    font-size: small;
+    text-align: center;
+}
+.footer a{
+    text-decoration: none;
+    color: #fff;
+}
+.footerDescription{
+    text-align: justify;
+}
+.copyRight{
+    background-color: rgb(29, 4, 4);
+}
